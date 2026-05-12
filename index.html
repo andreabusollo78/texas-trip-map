@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Texas Su Misura - Mappa collaborativa Google Sheet</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQhQUSoWBa4EeqMq2uY+t6tk6tqkC5E=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    :root{
+      --blue:#143d59;--blue2:#1f6f8b;--gold:#f4b942;--bg:#f5f1e8;--card:#fff;
+      --line:#d8d0c3;--text:#242424;--muted:#6b6b6b;--green:#198754;--red:#b02a37;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:linear-gradient(135deg,var(--blue),var(--blue2));color:white;padding:18px 24px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+    header h1{margin:0;font-size:26px} header p{margin:6px 0 0;opacity:.92}
+    .layout{display:grid;grid-template-columns:410px 1fr;height:calc(100vh - 86px)}
+    aside{overflow:auto;padding:16px;background:#fbfaf7;border-right:1px solid var(--line)}
+    #map{width:100%;height:100%}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 3px 10px rgba(0,0,0,.06)}
+    .card h2,.card h3{margin:0 0 10px;color:var(--blue)}
+    .legend-row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:14px}
+    .dot{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px;flex:0 0 24px}
+    .main{background:#0d6efd}.hotel{background:#6f42c1}.fuel{background:#198754}.custom{background:#f4b942;color:#222}.parking{background:#555}.sheet{background:#20c997;color:#111}
+    label{display:block;font-weight:bold;margin:9px 0 4px;font-size:13px;color:#333}
+    input,select,textarea{width:100%;padding:9px 10px;border:1px solid #cfc7ba;border-radius:8px;font-size:14px;background:white}
+    textarea{min-height:54px;resize:vertical}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    button{border:0;border-radius:9px;padding:10px 12px;font-weight:bold;cursor:pointer}.primary{background:#0d6efd;color:white}.secondary{background:#e7e0d5;color:#222}.danger{background:#b02a37;color:white}.success{background:#198754;color:white}
+    button:disabled{opacity:.55;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1 1 auto}
+    .help{font-size:12px;color:var(--muted);line-height:1.35;margin-top:7px}.status{font-size:13px;padding:8px;border-radius:9px;background:#eef6ff;border:1px solid #cfe2ff;margin-top:8px}.status.ok{background:#e9f7ef;border-color:#badbcc}.status.warn{background:#fff3cd;border-color:#ffecb5}.status.err{background:#f8d7da;border-color:#f5c2c7}
+    table{width:100%;border-collapse:collapse;font-size:12px} th,td{border-bottom:1px solid #eee;padding:7px 6px;text-align:left;vertical-align:top} th{background:#f1ede5;color:#333;position:sticky;top:0} tbody tr:hover{background:#fbf7ef}.small{font-size:12px;color:var(--muted)}
+    .pill{display:inline-block;border-radius:999px;padding:3px 8px;background:#f1ede5;font-size:12px;margin:2px 2px 2px 0}.hide{display:none!important}
+    .markerLabel{background:white;border:1px solid rgba(0,0,0,.25);border-radius:999px;padding:2px 6px;font-weight:bold;color:#111;box-shadow:0 1px 4px rgba(0,0,0,.22)}
+    @media (max-width:900px){.layout{grid-template-columns:1fr;height:auto}aside{height:auto}.mapwrap{height:70vh}}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Texas Su Misura - Mappa collaborativa</h1>
+  <p>Itinerario 30 maggio - 10 giugno 2026 · Google Sheet collegato · marker, rifornimenti e distanze</p>
+</header>
+<div class="layout">
+  <aside>
+    <section class="card">
+      <h2>Legenda</h2>
+      <div class="legend-row"><span class="dot main">1</span> Tappe principali / attrazioni</div>
+      <div class="legend-row"><span class="dot hotel">H</span> Hotel e soggiorni</div>
+      <div class="legend-row"><span class="dot fuel">⛽</span> Stazioni di servizio suggerite</div>
+      <div class="legend-row"><span class="dot parking">P</span> Parcheggi / aeroporti</div>
+      <div class="legend-row"><span class="dot sheet">G</span> Punti caricati da Google Sheet</div>
+      <div class="legend-row"><span class="dot custom">+</span> Punti aggiunti da questa pagina</div>
+      <div class="actions">
+        <button class="secondary" id="toggleFuelBtn" onclick="toggleFuel()">Nascondi rifornimenti</button>
+        <button class="secondary" onclick="fitAll()">Vedi tutto</button>
+      </div>
+      <div id="syncStatus" class="status">Pronto a sincronizzare con Google Sheet.</div>
+    </section>
+
+    <section class="card" id="customPointPanel">
+      <h2>➕ Aggiungi attrazione / ristorante / POV</h2>
+      <label for="placeName">Nome luogo</label>
+      <input id="placeName" type="text" placeholder="Es. BBQ Restaurant, punto panoramico..." />
+      <label for="placeType">Categoria</label>
+      <select id="placeType">
+        <option value="Ristorante">🍔 Ristorante</option>
+        <option value="Attrazione">📍 Attrazione</option>
+        <option value="POV">📸 POV / Punto panoramico</option>
+        <option value="Hotel">🏨 Hotel</option>
+        <option value="Fuel">⛽ Stazione servizio</option>
+        <option value="Altro">⭐ Altro</option>
+      </select>
+      <label for="placeSearch">Ricerca indirizzo / luogo</label>
+      <div class="grid2">
+        <input id="placeSearch" type="text" placeholder="Es. Cooper's BBQ Fort Worth" />
+        <button class="secondary" onclick="searchPlace()">Cerca</button>
+      </div>
+      <div class="grid2">
+        <div><label for="placeLat">Latitudine</label><input id="placeLat" type="number" step="0.000001" placeholder="31.968599" /></div>
+        <div><label for="placeLng">Longitudine</label><input id="placeLng" type="number" step="0.000001" placeholder="-99.901813" /></div>
+      </div>
+      <label for="placeNote">Note</label>
+      <textarea id="placeNote" placeholder="Es. Da prenotare, migliore al tramonto, parcheggio vicino..."></textarea>
+      <div class="actions">
+        <button class="primary" onclick="addCustomPoint()">Aggiungi e salva su Google Sheet</button>
+        <button class="secondary" onclick="enableClickPick()">Scegli cliccando sulla mappa</button>
+      </div>
+      <div class="help">I punti vengono salvati su Google Sheet tramite il tuo Apps Script. In caso di errore rete vengono mantenuti anche in backup locale.</div>
+    </section>
+
+    <section class="card">
+      <h2>Punti cloud caricati</h2>
+      <div class="actions"><button class="success" onclick="loadCloudPoints(true)">Ricarica da Google Sheet</button><button class="danger" onclick="clearLocalBackup()">Pulisci solo backup locale</button></div>
+      <div class="help">La pulizia del backup locale non cancella i dati dal Google Sheet.</div>
+      <div id="cloudList" class="small" style="margin-top:8px;">Nessun punto cloud caricato.</div>
+    </section>
+
+    <section class="card">
+      <h2>Distanze principali</h2>
+      <table>
+        <thead><tr><th>Da</th><th>A</th><th>Km indicativi</th><th>Tempo</th></tr></thead>
+        <tbody id="distanceTableBody"></tbody>
+      </table>
+      <div class="help">Le distanze sono indicative in linea d'aria/strada stimata per uso pianificazione. Per guida reale usare Google Maps/Waze.</div>
+    </section>
+  </aside>
+  <main class="mapwrap"><div id="map"></div></main>
+</div>
+<script>
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxh3xKPmXHfN_Ff_lNbREMlyM_2HBR-wkVICvwwSb5l62n52vFr0q0QHmahREQFQ1E-LA/exec";
+const LOCAL_BACKUP_KEY = "texas_custom_places_backup_v1";
+
+const map = L.map('map', { scrollWheelZoom:true }).setView([31.3, -98.7], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+
+const defaultPoints = [
+  {n:'Dallas/Fort Worth Airport - DFW', c:'Aeroporto', lat:32.8998, lng:-97.0403, kind:'parking'},
+  {n:'Magnolia Hotel Dallas Downtown', c:'Hotel', lat:32.7802, lng:-96.7995, kind:'hotel'},
+  {n:'Deep Ellum', c:'Quartiere', lat:32.7840, lng:-96.7836, kind:'main'},
+  {n:'Pioneer Plaza', c:'Attrazione', lat:32.7769, lng:-96.8010, kind:'main'},
+  {n:'The Sixth Floor Museum / Dealey Plaza', c:'Museo', lat:32.7798, lng:-96.8085, kind:'main'},
+  {n:'Deep Ellum Parking Garage', c:'Parcheggio', lat:32.7836, lng:-96.7847, kind:'parking'},
+  {n:'Fort Worth Stockyards', c:'Attrazione', lat:32.7881, lng:-97.3489, kind:'main'},
+  {n:'Stockyards Station Parking', c:'Parcheggio', lat:32.7892, lng:-97.3478, kind:'parking'},
+  {n:'Big Texan Hotel - Amarillo', c:'Hotel', lat:35.1910, lng:-101.9869, kind:'hotel'},
+  {n:'Cadillac Ranch', c:'Attrazione', lat:35.1872, lng:-102.1614, kind:'main'},
+  {n:'Big Texan Steak Ranch', c:'Ristorante', lat:35.1907, lng:-101.9871, kind:'main'},
+  {n:'Palo Duro Canyon State Park', c:'Natura', lat:34.9847, lng:-101.7019, kind:'main'},
+  {n:'Residence Inn Lubbock', c:'Hotel', lat:33.5363, lng:-101.9220, kind:'hotel'},
+  {n:'Buddy Holly District', c:'Quartiere', lat:33.5842, lng:-101.8455, kind:'main'},
+  {n:'Hampton Inn Fredericksburg', c:'Hotel', lat:30.2815, lng:-98.8720, kind:'hotel'},
+  {n:'Luckenbach', c:'Musica country', lat:30.1799, lng:-98.7562, kind:'main'},
+  {n:'Dixie Dude Guest Ranch - Bandera', c:'Ranch', lat:29.7355, lng:-99.0751, kind:'hotel'},
+  {n:'Westin Riverwalk - San Antonio', c:'Hotel', lat:29.4231, lng:-98.4890, kind:'hotel'},
+  {n:'The Alamo', c:'Attrazione', lat:29.4260, lng:-98.4861, kind:'main'},
+  {n:'San Antonio River Walk', c:'Passeggiata', lat:29.4241, lng:-98.4884, kind:'main'},
+  {n:'Boudro’s on the Riverwalk', c:'Ristorante', lat:29.4244, lng:-98.4881, kind:'main'},
+  {n:'Hilton Houston NASA Clear Lake', c:'Hotel', lat:29.5486, lng:-95.0798, kind:'hotel'},
+  {n:'Space Center Houston / NASA', c:'Attrazione', lat:29.5518, lng:-95.0981, kind:'main'},
+  {n:'Houston Intercontinental Airport - IAH', c:'Aeroporto', lat:29.9902, lng:-95.3368, kind:'parking'}
+];
+
+const fuelPoints = [
+  {n:'Buc-ee’s Fort Worth', c:'Fuel', lat:32.9175, lng:-97.3207},
+  {n:'Love’s Travel Stop - Quanah', c:'Fuel', lat:34.2972, lng:-99.7412},
+  {n:'TA Travel Center - Amarillo', c:'Fuel', lat:35.1917, lng:-101.9440},
+  {n:'United Express / Fuel - Plainview', c:'Fuel', lat:34.1848, lng:-101.7069},
+  {n:'Love’s Travel Stop - Sweetwater', c:'Fuel', lat:32.4629, lng:-100.3965},
+  {n:'Buc-ee’s New Braunfels', c:'Fuel', lat:29.7249, lng:-98.0735},
+  {n:'Buc-ee’s Katy', c:'Fuel', lat:29.7858, lng:-95.8079},
+  {n:'Shell / Fuel - Clear Lake Area', c:'Fuel', lat:29.5571, lng:-95.1112}
+];
+
+const routePoints = [
+  {n:'Dallas', lat:32.7767, lng:-96.7970},
+  {n:'Fort Worth Stockyards', lat:32.7881, lng:-97.3489},
+  {n:'Amarillo', lat:35.221997, lng:-101.8313},
+  {n:'Palo Duro Canyon', lat:34.9847, lng:-101.7019},
+  {n:'Lubbock', lat:33.5779, lng:-101.8552},
+  {n:'Fredericksburg', lat:30.2752, lng:-98.8719},
+  {n:'Luckenbach', lat:30.1799, lng:-98.7562},
+  {n:'Bandera', lat:29.7266, lng:-99.0736},
+  {n:'San Antonio', lat:29.4241, lng:-98.4936},
+  {n:'Houston NASA Clear Lake', lat:29.5518, lng:-95.0981},
+  {n:'Houston IAH', lat:29.9902, lng:-95.3368}
+];
+
+const plannedDistances = [
+  ['DFW Airport','Dallas Downtown','35 km','30-45 min'],
+  ['Dallas','Fort Worth Stockyards','55 km','45-60 min'],
+  ['Fort Worth','Amarillo','540 km','5h 15m - 6h'],
+  ['Amarillo','Palo Duro Canyon','45 km','35-45 min'],
+  ['Palo Duro Canyon','Lubbock','190 km','2h - 2h 20m'],
+  ['Lubbock','Fredericksburg','520 km','5h - 5h 45m'],
+  ['Fredericksburg','Luckenbach','20 km','20 min'],
+  ['Luckenbach','Bandera Ranch','85 km','1h 15m - 1h 30m'],
+  ['Bandera','San Antonio Riverwalk','80 km','1h - 1h 20m'],
+  ['San Antonio','Houston NASA Clear Lake','365 km','3h 45m - 4h 30m'],
+  ['NASA Clear Lake','Houston IAH','75 km','55-75 min']
+];
+
+const allMarkers = [];
+const cloudMarkers = L.layerGroup().addTo(map);
+const fuelLayer = L.layerGroup().addTo(map);
+let fuelVisible = true;
+let clickPickActive = false;
+let lastRoutePointForCustom = routePoints[routePoints.length-1];
+
+function divIcon(txt, cls){ return L.divIcon({className:'', html:`<div class="dot ${cls}">${txt}</div>`, iconSize:[26,26], iconAnchor:[13,13]}); }
+function customIcon(txt){ return L.divIcon({className:'', html:`<div class="markerLabel">${txt}</div>`, iconSize:[38,24], iconAnchor:[19,12]}); }
+function status(msg, type='') { const el=document.getElementById('syncStatus'); el.className='status '+type; el.textContent=msg; }
+function escapeHtml(str){ return String(str ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+function addBaseMarkers(){
+  defaultPoints.forEach((p, i)=>{
+    let cls = p.kind==='hotel'?'hotel':p.kind==='parking'?'parking':'main';
+    let label = p.kind==='hotel'?'H':p.kind==='parking'?'P':String(i+1);
+    const m=L.marker([p.lat,p.lng],{icon:divIcon(label,cls)}).addTo(map).bindPopup(`<b>${escapeHtml(p.n)}</b><br>${escapeHtml(p.c)}`);
+    allMarkers.push(m);
+  });
+  fuelPoints.forEach(p=>{
+    const m=L.marker([p.lat,p.lng],{icon:divIcon('⛽','fuel')}).bindPopup(`<b>${escapeHtml(p.n)}</b><br>Stazione di servizio suggerita`);
+    fuelLayer.addLayer(m); allMarkers.push(m);
+  });
+  L.polyline(routePoints.map(p=>[p.lat,p.lng]), {color:'#143d59', weight:4, opacity:.75, dashArray:'8 8'}).addTo(map);
+}
+
+function renderDistanceTable(){
+  const body=document.getElementById('distanceTableBody'); body.innerHTML='';
+  plannedDistances.forEach(r=>{
+    const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(r[0])}</td><td>${escapeHtml(r[1])}</td><td>${escapeHtml(r[2])}</td><td>${escapeHtml(r[3])}</td>`; body.appendChild(tr);
+  });
+}
+
+function toggleFuel(){
+  if(fuelVisible){ map.removeLayer(fuelLayer); fuelVisible=false; document.getElementById('toggleFuelBtn').textContent='Mostra rifornimenti'; }
+  else { map.addLayer(fuelLayer); fuelVisible=true; document.getElementById('toggleFuelBtn').textContent='Nascondi rifornimenti'; }
+}
+function fitAll(){ const group=L.featureGroup(allMarkers.concat(cloudMarkers.getLayers())); map.fitBounds(group.getBounds().pad(.15)); }
+function haversineKm(a,b){ const R=6371; const dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180; const lat1=a.lat*Math.PI/180, lat2=b.lat*Math.PI/180; const s=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(s)); }
+function addDistanceRow(fromName, toName, km, tempo=''){ const body=document.getElementById('distanceTableBody'); const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(fromName)}</td><td>${escapeHtml(toName)}</td><td>${km}</td><td>${tempo || 'Punto personalizzato'}</td>`; body.appendChild(tr); }
+
+function normalizePoint(p){
+  return {
+    id: p.id || p.ID || Date.now(),
+    nome: p.nome || p.Nome || p.name || '',
+    categoria: p.categoria || p.Categoria || p.type || 'Altro',
+    latitudine: parseFloat(p.latitudine ?? p.Latitudine ?? p.lat ?? p.Lat),
+    longitudine: parseFloat(p.longitudine ?? p.Longitudine ?? p.lng ?? p.Lng),
+    note: p.note || p.Note || '',
+    creato_il: p.creato_il || p.Creato_il || p.data || ''
+  };
+}
+
+function markerEmoji(c){
+  const s=String(c||'').toLowerCase();
+  if(s.includes('rist')) return '🍔'; if(s.includes('fuel')||s.includes('servizio')||s.includes('benz')) return '⛽'; if(s.includes('hotel')) return '🏨'; if(s.includes('pov')||s.includes('foto')||s.includes('panoram')) return '📸'; return 'G';
+}
+
+function addCloudMarker(point, source='cloud'){
+  const p=normalizePoint(point);
+  if(!p.nome || isNaN(p.latitudine) || isNaN(p.longitudine)) return false;
+  const cls = source==='local' ? 'custom' : 'sheet';
+  const label = source==='local' ? '+' : markerEmoji(p.categoria);
+  const m=L.marker([p.latitudine,p.longitudine],{icon:divIcon(label,cls)})
+    .bindPopup(`<b>${escapeHtml(p.nome)}</b><br>${escapeHtml(p.categoria)}${p.note?'<br><small>'+escapeHtml(p.note)+'</small>':''}`);
+  cloudMarkers.addLayer(m); allMarkers.push(m);
+  const km=Math.round(haversineKm(lastRoutePointForCustom,{lat:p.latitudine,lng:p.longitudine}));
+  addDistanceRow(lastRoutePointForCustom.n, p.nome, `~${km} km`, source==='cloud'?'da Google Sheet':'backup locale');
+  lastRoutePointForCustom={n:p.nome, lat:p.latitudine, lng:p.longitudine};
+  return true;
+}
+
+function updateCloudList(points){
+  const el=document.getElementById('cloudList');
+  if(!points.length){ el.textContent='Nessun punto cloud caricato.'; return; }
+  el.innerHTML=points.map(p=>`<span class="pill">${escapeHtml(p.nome || p.name)} · ${escapeHtml(p.categoria || p.type || 'Altro')}</span>`).join('');
+}
+
+async function loadCloudPoints(force=false){
+  cloudMarkers.clearLayers();
+  lastRoutePointForCustom = routePoints[routePoints.length-1];
+  renderDistanceTable();
+  try{
+    status('Caricamento punti da Google Sheet...', 'warn');
+    const res = await fetch(GOOGLE_SCRIPT_URL + '?t=' + Date.now(), {method:'GET', cache:'no-store'});
+    if(!res.ok) throw new Error('Risposta non valida: '+res.status);
+    const raw = await res.json();
+    const points = Array.isArray(raw) ? raw.map(normalizePoint).filter(p=>p.nome && !isNaN(p.latitudine) && !isNaN(p.longitudine)) : [];
+    points.forEach(p=>addCloudMarker(p,'cloud'));
+    updateCloudList(points);
+    status(`Sincronizzato con Google Sheet: ${points.length} punti caricati.`, 'ok');
+    const backup = getLocalBackup();
+    if(backup.length){ backup.forEach(p=>addCloudMarker(p,'local')); status(`Google Sheet caricato. Presenti anche ${backup.length} punti in backup locale.`, 'warn'); }
+  }catch(err){
+    console.error(err);
+    const backup=getLocalBackup();
+    backup.forEach(p=>addCloudMarker(p,'local'));
+    updateCloudList(backup);
+    status(`Google Sheet non raggiungibile. Uso backup locale: ${backup.length} punti.`, 'err');
+  }
+}
+
+async function saveCloudPoint(payload){
+  try{
+    status('Salvataggio su Google Sheet...', 'warn');
+    await fetch(GOOGLE_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload) });
+    status('Punto salvato su Google Sheet. Ricarico la mappa...', 'ok');
+    setTimeout(()=>loadCloudPoints(true), 900);
+    return true;
+  }catch(err){
+    console.error(err); saveLocalBackup(payload); status('Errore salvataggio Google Sheet: punto salvato in backup locale.', 'err'); return false;
+  }
+}
+function getLocalBackup(){ try{return JSON.parse(localStorage.getItem(LOCAL_BACKUP_KEY)||'[]')}catch(e){return[]} }
+function saveLocalBackup(p){ const arr=getLocalBackup(); arr.push({...p, id:'local_'+Date.now()}); localStorage.setItem(LOCAL_BACKUP_KEY,JSON.stringify(arr)); }
+function clearLocalBackup(){ localStorage.removeItem(LOCAL_BACKUP_KEY); status('Backup locale cancellato. I dati su Google Sheet restano invariati.', 'ok'); loadCloudPoints(true); }
+
+async function addCustomPoint(){
+  const nome=document.getElementById('placeName').value.trim();
+  const categoria=document.getElementById('placeType').value;
+  const latitudine=parseFloat(document.getElementById('placeLat').value);
+  const longitudine=parseFloat(document.getElementById('placeLng').value);
+  const note=document.getElementById('placeNote').value.trim();
+  if(!nome || isNaN(latitudine) || isNaN(longitudine)){ alert('Inserisci almeno nome, latitudine e longitudine. Puoi usare Cerca o cliccare sulla mappa.'); return; }
+  const payload={nome,categoria,latitudine,longitudine,note};
+  addCloudMarker(payload,'local');
+  await saveCloudPoint(payload);
+  ['placeName','placeSearch','placeLat','placeLng','placeNote'].forEach(id=>document.getElementById(id).value='');
+}
+
+function enableClickPick(){ clickPickActive=true; status('Clicca sulla mappa per compilare latitudine e longitudine.', 'warn'); }
+map.on('click', e=>{ if(!clickPickActive) return; document.getElementById('placeLat').value=e.latlng.lat.toFixed(6); document.getElementById('placeLng').value=e.latlng.lng.toFixed(6); clickPickActive=false; status('Coordinate inserite dal click sulla mappa. Ora aggiungi il nome e salva.', 'ok'); });
+
+async function searchPlace(){
+  const q=document.getElementById('placeSearch').value.trim();
+  if(!q){ alert('Scrivi un luogo da cercare.'); return; }
+  try{
+    status('Ricerca luogo con OpenStreetMap...', 'warn');
+    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q+', Texas, USA');
+    const res=await fetch(url,{headers:{'Accept':'application/json'}}); const data=await res.json();
+    if(!data.length) throw new Error('Nessun risultato');
+    document.getElementById('placeLat').value=parseFloat(data[0].lat).toFixed(6);
+    document.getElementById('placeLng').value=parseFloat(data[0].lon).toFixed(6);
+    if(!document.getElementById('placeName').value.trim()) document.getElementById('placeName').value=q;
+    map.setView([data[0].lat,data[0].lon],14);
+    status('Luogo trovato. Controlla le coordinate e salva il punto.', 'ok');
+  }catch(err){ console.error(err); status('Ricerca non riuscita. Inserisci coordinate manualmente o clicca sulla mappa.', 'err'); }
+}
+
+addBaseMarkers(); renderDistanceTable(); loadCloudPoints();
+setTimeout(fitAll, 1000);
+</script>
+</body>
+</html>
