@@ -256,6 +256,96 @@ th{
   height:100% !important;
 }
 
+
+.nav-modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  z-index:3000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+.nav-modal{
+  width:min(420px, 100%);
+  background:white;
+  color:#111827;
+  border-radius:18px;
+  box-shadow:0 18px 45px rgba(0,0,0,.35);
+  padding:18px;
+}
+.nav-modal h3{
+  margin:0 0 6px 0;
+  font-size:19px;
+}
+.nav-modal p{
+  margin:0 0 14px 0;
+  color:#4b5563;
+  font-size:13px;
+  line-height:1.35;
+}
+.nav-modal-actions{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.nav-btn{
+  border:0;
+  border-radius:12px;
+  padding:12px;
+  font-weight:700;
+  cursor:pointer;
+  color:white;
+  background:#2563eb;
+}
+.nav-btn.waze{background:#0ea5e9}
+.nav-btn.apple{background:#111827}
+.nav-btn.cancel{background:#6b7280}
+
+
+.weather-strip{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:10px 0 8px 0;
+  padding:9px 11px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#eff6ff,#f8fafc);
+  border:1px solid #dbeafe;
+  color:#111827;
+}
+.weather-icon{
+  width:42px;
+  height:42px;
+  min-width:42px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:25px;
+  background:white;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);
+}
+.weather-text{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+.weather-main{
+  font-size:13px;
+  font-weight:800;
+}
+.weather-sub{
+  font-size:12px;
+  color:#4b5563;
+  line-height:1.3;
+}
+.weather-loading{
+  opacity:.75;
+}
+
 @media(max-width:900px){
   html,body{
     overflow:hidden;
@@ -313,7 +403,7 @@ th{
   <aside class="sidebar">
     <div class="header">
       <h1>Texas On The Road 2026</h1>
-      <p>Mappa interattiva giorno per giorno con tappe fisse, attività, distanze, POI, distributori e ATM.</p>
+      <p>Mappa interattiva giorno per giorno con tappe fisse, attività, distanze, POI, distributori, ATM e meteo giornaliero.</p>
     </div>
 
     <button class="btn global" onclick="showAll()">🌎 Globale - Tutto il viaggio</button>
@@ -342,7 +432,7 @@ th{
       <button class="btn clear" onclick="clearPOI()">Cancella richiesta / POI</button>
 
       <div class="small-note">
-        La ricerca usa OpenStreetMap/Nominatim. Sposta o zooma la mappa nella zona desiderata prima di cercare distributori o ATM.
+        La ricerca usa OpenStreetMap/Nominatim. Distributori e ATM vengono cercati nella zona visualizzata, con fallback su città/tappa se i risultati sono pochi.
       </div>
 
       <div id="poiResults" class="poi-results"></div>
@@ -357,6 +447,14 @@ th{
       <section class="info-panel">
         <h2 id="panelTitle">Texas On The Road</h2>
         <p id="panelSubtitle">Seleziona un giorno oppure la vista globale.</p>
+
+        <div id="weatherStrip" class="weather-strip" style="display:none">
+          <div id="weatherIcon" class="weather-icon">⛅</div>
+          <div class="weather-text">
+            <div id="weatherMain" class="weather-main">Meteo</div>
+            <div id="weatherSub" class="weather-sub">Previsione non disponibile.</div>
+          </div>
+        </div>
 
         <div id="activities" class="activity-list"></div>
 
@@ -375,6 +473,19 @@ th{
       </section>
     </div>
   </main>
+</div>
+
+<div id="navModalBackdrop" class="nav-modal-backdrop">
+  <div class="nav-modal">
+    <h3>Aprire navigazione?</h3>
+    <p id="navModalText">Scegli l'app da utilizzare per raggiungere il punto selezionato.</p>
+    <div class="nav-modal-actions">
+      <button class="nav-btn" onclick="openNavigationApp('google')">Google Maps</button>
+      <button class="nav-btn waze" onclick="openNavigationApp('waze')">Waze</button>
+      <button class="nav-btn apple" onclick="openNavigationApp('apple')">Mappe iOS / Apple Maps</button>
+      <button class="nav-btn cancel" onclick="closeNavigationModal()">Annulla</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -630,6 +741,8 @@ let map = null;
 let tileLayer = null;
 let mapReady = false;
 let pendingInitialView = true;
+let selectedNavigationTarget = null;
+const weatherCache = {};
 
 let activeMarkers = [];
 let activeLines = [];
@@ -723,6 +836,119 @@ async function initMap(){
   }
 }
 
+
+function getWeatherReferencePoint(day){
+  if(!day || !day.points || !day.points.length) return null;
+
+  // Preferisce il luogo principale della giornata: hotel/destinazione/prenotazione/visita centrale.
+  const preferred = day.points.find(p => ["hotel","ranch","prenotazione","visita","natura"].includes(p.type));
+  return preferred || day.points[Math.floor(day.points.length / 2)] || day.points[0];
+}
+
+function weatherIconFromCode(code){
+  if(code === 0) return {icon:"☀️", label:"Bel tempo"};
+  if([1,2].includes(code)) return {icon:"🌤️", label:"Tempo incerto"};
+  if([3,45,48].includes(code)) return {icon:"☁️", label:"Cielo coperto"};
+  if([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code)) return {icon:"🌧️", label:"Pioggia"};
+  if([71,73,75,77,85,86].includes(code)) return {icon:"🌧️", label:"Precipitazioni"};
+  return {icon:"⛅", label:"Tempo variabile"};
+}
+
+function setWeatherLoading(day){
+  const strip = document.getElementById("weatherStrip");
+  strip.style.display = "flex";
+  document.getElementById("weatherIcon").innerText = "⛅";
+  document.getElementById("weatherMain").innerText = "Meteo in caricamento";
+  document.getElementById("weatherSub").innerText = `${day.date} · ${day.title}`;
+  strip.classList.add("weather-loading");
+}
+
+function setWeatherUnavailable(day, reason){
+  const strip = document.getElementById("weatherStrip");
+  strip.style.display = "flex";
+  document.getElementById("weatherIcon").innerText = "⛅";
+  document.getElementById("weatherMain").innerText = "Meteo non disponibile";
+  document.getElementById("weatherSub").innerText = reason || `${day.date} · previsione non disponibile per questa data.`;
+  strip.classList.remove("weather-loading");
+}
+
+function hideWeather(){
+  const strip = document.getElementById("weatherStrip");
+  if(strip) strip.style.display = "none";
+}
+
+async function updateWeatherForDay(day){
+  const ref = getWeatherReferencePoint(day);
+  if(!ref){
+    setWeatherUnavailable(day, "Nessun punto geografico disponibile per la previsione.");
+    return;
+  }
+
+  setWeatherLoading(day);
+
+  const isoDate = day.date.split("/").reverse().join("-");
+  const cacheKey = `${isoDate}_${ref.lat}_${ref.lng}`;
+
+  if(weatherCache[cacheKey]){
+    renderWeather(day, weatherCache[cacheKey], ref);
+    return;
+  }
+
+  const url =
+    "https://api.open-meteo.com/v1/forecast" +
+    `?latitude=${encodeURIComponent(ref.lat)}` +
+    `&longitude=${encodeURIComponent(ref.lng)}` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
+    `&temperature_unit=celsius` +
+    `&timezone=auto` +
+    `&start_date=${isoDate}` +
+    `&end_date=${isoDate}`;
+
+  try{
+    const response = await fetch(url, {headers:{"Accept":"application/json"}});
+    const data = await response.json();
+
+    if(!data || !data.daily || !data.daily.time || !data.daily.time.length){
+      setWeatherUnavailable(day, `${day.date} · previsione non disponibile. Apri il file con connessione Internet oppure verifica la data.`);
+      return;
+    }
+
+    const weather = {
+      code: data.daily.weather_code[0],
+      tmax: data.daily.temperature_2m_max[0],
+      tmin: data.daily.temperature_2m_min[0],
+      place: ref.name
+    };
+
+    weatherCache[cacheKey] = weather;
+    renderWeather(day, weather, ref);
+  }catch(e){
+    console.error("Errore meteo", e);
+    setWeatherUnavailable(day, `${day.date} · meteo non caricato. Controlla connessione Internet o blocchi del browser.`);
+  }
+}
+
+function renderWeather(day, weather, ref){
+  const info = weatherIconFromCode(Number(weather.code));
+  const strip = document.getElementById("weatherStrip");
+  strip.style.display = "flex";
+  strip.classList.remove("weather-loading");
+
+  document.getElementById("weatherIcon").innerText = info.icon;
+  document.getElementById("weatherMain").innerText =
+    `${day.day} · ${day.date} · ${day.title} · ${info.label}`;
+
+  const tmin = Number(weather.tmin);
+  const tmax = Number(weather.tmax);
+  const tempText = Number.isFinite(tmin) && Number.isFinite(tmax)
+    ? `Min ${tmin.toFixed(0)}°C · Max ${tmax.toFixed(0)}°C`
+    : "Temperature non disponibili";
+
+  document.getElementById("weatherSub").innerText =
+    `${tempText} · riferimento: ${ref.name}`;
+}
+
+
 function pointLabel(p){
   const emoji = icons[p.type] || "📍";
   return `${emoji} ${p.time ? p.time + " - " : ""}${p.name}`;
@@ -766,6 +992,8 @@ function renderPoints(points, fit=true){
 
   points.forEach(p => {
     const marker = L.marker([p.lat, p.lng]).addTo(map).bindPopup(markerPopup(p));
+    marker.on("click", () => askNavigation(p.lat, p.lng, p.name));
+    marker.on("dblclick", () => marker.openPopup());
     activeMarkers.push(marker);
     latlngs.push([p.lat, p.lng]);
   });
@@ -803,6 +1031,7 @@ function showDay(index){
   document.getElementById("panelSubtitle").innerText = day.description;
   document.getElementById("activities").innerHTML = day.activities.map(a => `<div class="activity">${a}</div>`).join("");
 
+  updateWeatherForDay(day);
   renderPoints(day.points);
   refreshTable();
 }
@@ -819,6 +1048,7 @@ function showAll(){
 
   document.getElementById("panelTitle").innerText = "Vista Globale - Texas On The Road 2026";
   document.getElementById("panelSubtitle").innerText = "Tutti i punti fissi del viaggio, con tabella completa delle distanze stimate tra tappe successive.";
+  hideWeather();
   document.getElementById("activities").innerHTML = tripDays.map(d => `<div class="activity"><b>${d.day} - ${d.date}</b>: ${d.title}</div>`).join("");
 
   renderPoints(allPoints);
@@ -913,8 +1143,28 @@ async function searchPOI(query, type){
   const delta = 0.45;
 
   const variants = {
-    fuel: ["gas station", "fuel station", "petrol station"],
-    atm: ["ATM", "cash machine", "bank ATM", "automated teller machine"]
+    fuel: [
+      "gas station",
+      "fuel station",
+      "petrol station",
+      "service station",
+      "truck stop",
+      "travel center",
+      "convenience store fuel",
+      "diesel fuel",
+      "fuel"
+    ],
+    atm: [
+      "ATM",
+      "cash machine",
+      "automated teller machine",
+      "cashpoint",
+      "bankomat",
+      "credit union ATM",
+      "convenience store ATM",
+      "gas station ATM",
+      "ATM kiosk"
+    ]
   };
 
   const queries = variants[type] || [query];
@@ -923,21 +1173,29 @@ async function searchPOI(query, type){
 
   const baseCity = currentDayIndex !== null ? tripDays[currentDayIndex].baseCity : "Texas";
 
-  for(const q of queries){
+  async function runNominatim(q, bounded=true){
+    const viewboxPart = bounded
+      ? "&bounded=1&viewbox=" + encodeURIComponent(`${center.lng-delta},${center.lat+delta},${center.lng+delta},${center.lat-delta}`)
+      : "";
+
     const url =
       "https://nominatim.openstreetmap.org/search" +
       "?format=jsonv2" +
-      "&limit=12" +
+      "&limit=14" +
       "&addressdetails=1" +
-      "&bounded=1" +
+      "&extratags=1" +
+      "&namedetails=1" +
       "&countrycodes=us" +
-      "&viewbox=" + encodeURIComponent(`${center.lng-delta},${center.lat+delta},${center.lng+delta},${center.lat-delta}`) +
+      viewboxPart +
       "&q=" + encodeURIComponent(q + " near " + baseCity);
 
-    try{
-      const response = await fetch(url, { headers: { "Accept":"application/json" } });
-      const data = await response.json();
+    const response = await fetch(url, { headers: { "Accept":"application/json" } });
+    return await response.json();
+  }
 
+  for(const q of queries){
+    try{
+      const data = await runNominatim(q, true);
       data.forEach(item => {
         const key = `${item.lat},${item.lon}`;
         if(!seen.has(key)){
@@ -950,7 +1208,32 @@ async function searchPOI(query, type){
     }
   }
 
-  showPOIResults(results.slice(0,12));
+  // Fallback: se la zona visualizzata è povera di risultati, prova anche una ricerca meno vincolata.
+  if(results.length < 4 && (type === "fuel" || type === "atm")){
+    for(const q of queries.slice(0,5)){
+      try{
+        const data = await runNominatim(q, false);
+        data.forEach(item => {
+          const key = `${item.lat},${item.lon}`;
+          if(!seen.has(key)){
+            seen.add(key);
+            results.push(item);
+          }
+        });
+      }catch(e){
+        console.error(e);
+      }
+    }
+  }
+
+  const sorted = results
+    .map(item => ({
+      ...item,
+      distanceFromCenter: calcDistance(center.lat, center.lng, Number(item.lat), Number(item.lon)) / 1.18
+    }))
+    .sort((a,b) => a.distanceFromCenter - b.distanceFromCenter);
+
+  showPOIResults(sorted.slice(0,12));
 }
 
 function showPOIResults(results){
@@ -980,6 +1263,8 @@ function showPOIResults(results){
     }).addTo(map);
     marker.options.poiName = label;
     marker.bindPopup(`<b>${label}</b><br><button onclick='addPOI(${Number(r.lat)}, ${Number(r.lon)}, ${JSON.stringify(label)})'>Aggiungi alla tabella</button>`);
+    marker.on("click", () => askNavigation(Number(r.lat), Number(r.lon), label));
+    marker.on("dblclick", () => marker.openPopup());
     poiMarkers.push(marker);
   });
 
@@ -997,10 +1282,54 @@ function addPOI(lat, lng, name){
   const marker = L.marker([lat, lng]).addTo(map);
   marker.options.poiName = name;
   marker.bindPopup(`<b>POI aggiunto</b><br>${name}`);
+  marker.on("click", () => askNavigation(lat, lng, name));
+  marker.on("dblclick", () => marker.openPopup());
   poiMarkers.push(marker);
-  marker.openPopup();
+  askNavigation(lat, lng, name);
   refreshTable();
 }
+
+
+function askNavigation(lat, lng, name){
+  selectedNavigationTarget = {lat, lng, name};
+  const text = document.getElementById("navModalText");
+  text.innerText = `Vuoi aprire la navigazione verso: ${name}? Scegli l'app da utilizzare.`;
+  document.getElementById("navModalBackdrop").style.display = "flex";
+}
+
+function closeNavigationModal(){
+  document.getElementById("navModalBackdrop").style.display = "none";
+}
+
+function openNavigationApp(app){
+  if(!selectedNavigationTarget) return;
+
+  const {lat, lng, name} = selectedNavigationTarget;
+  const encodedName = encodeURIComponent(name || "Destinazione");
+
+  let url = "";
+
+  if(app === "google"){
+    url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  }else if(app === "waze"){
+    url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  }else if(app === "apple"){
+    url = `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d&q=${encodedName}`;
+  }
+
+  closeNavigationModal();
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape") closeNavigationModal();
+});
+
+document.addEventListener("click", function(e){
+  const backdrop = document.getElementById("navModalBackdrop");
+  if(e.target === backdrop) closeNavigationModal();
+});
+
 
 function cleanDisplayName(name){
   if(!name) return "POI";
