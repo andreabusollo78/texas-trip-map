@@ -1,359 +1,1032 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Texas On The Road – Mappa fedele al programma</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <style>
-    :root{--blue:#123b63;--gold:#c8912e;--light:#f7f3ec;--text:#202936;--muted:#667085;--green:#0f5132;--red:#9f1d20;--card:#fff;--border:#d9dee8;}
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--light);color:var(--text)}
-    header{background:linear-gradient(135deg,#0b2f4f,#19527e);color:#fff;padding:18px 24px;border-bottom:5px solid var(--gold)}
-    header h1{margin:0;font-size:26px} header p{margin:6px 0 0;color:#e8f1fb;font-size:14px}
-    .layout{display:grid;grid-template-columns:420px 1fr;gap:0;min-height:calc(100vh - 84px)}
-    aside{height:calc(100vh - 84px);overflow:auto;padding:16px;background:#fff;border-right:1px solid var(--border)}
-    #map{height:calc(100vh - 84px);width:100%}
-    .card{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-    h2{font-size:18px;margin:0 0 10px;color:var(--blue)} h3{font-size:15px;margin:12px 0 6px;color:var(--blue)}
-    .btn{border:0;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;margin:4px 4px 4px 0}
-    .btn.secondary{background:#58677a}.btn.green{background:var(--green)}.btn.gold{background:var(--gold);color:#111}.btn.red{background:var(--red)}
-    select,input{width:100%;padding:10px;border:1px solid #cfd5df;border-radius:10px;margin:5px 0 9px;font-size:14px;background:#fff}
-    label{font-size:13px;font-weight:700;color:#344054}.small{font-size:12px;color:var(--muted);line-height:1.45}.status{font-size:13px;margin-top:8px;color:#344054}
-    table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px} th{background:#edf3f8;color:#102a43;text-align:left;position:sticky;top:0} th,td{border:1px solid #d8dee8;padding:7px;vertical-align:top} tr:nth-child(even){background:#fafafa}
-    .day{border-left:5px solid var(--gold);padding:10px 10px 10px 12px;border-radius:10px;background:#fbfbfc;margin:10px 0;border-top:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
-    .day-title{font-weight:800;color:#0b2f4f}.pill{display:inline-block;background:#eef4ff;color:#123b63;padding:2px 7px;border-radius:20px;font-size:11px;margin:2px 4px 2px 0;border:1px solid #cfe0f5}
-    .legend-row{display:flex;align-items:center;gap:8px;margin:5px 0}.dot{width:12px;height:12px;border-radius:50%;display:inline-block}.fixed{background:#1f77b4}.food{background:#d64545}.hotel{background:#6f42c1}.parking{background:#5b6770}.service{background:#0f8b4c}.search{background:#ff9800}
-    .leaflet-popup-content{font-size:13px}.popup-title{font-weight:800;color:#123b63;margin-bottom:4px}.popup-sub{color:#667085;font-size:12px}.popup-link{display:inline-block;margin-top:6px;color:#123b63;font-weight:700;text-decoration:none}
-    .route-link{color:#123b63;font-weight:700;text-decoration:underline;cursor:pointer}
-    @media(max-width:960px){.layout{grid-template-columns:1fr}aside{height:auto;max-height:none}.mapWrap{height:78vh}#map{height:78vh}}
-    @media print{header,.controls,.poiSearch{display:none!important}.layout{display:block}aside{height:auto;overflow:visible;border:0}#map{height:550px;page-break-after:always}.card{box-shadow:none;break-inside:avoid}th{position:static}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Texas On The Road 2026 - Mappa Interattiva</title>
+
+<link id="leafletCssPrimary" rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link id="leafletCssFallback" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+:root{
+  --blue:#2563eb;
+  --blue-dark:#1d4ed8;
+  --green:#16a34a;
+  --red:#dc2626;
+  --panel:#111827;
+  --panel2:#1f2937;
+  --bg:#f3f4f6;
+  --text:#111827;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:Arial, Helvetica, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.app{
+  width:100vw;
+  height:100vh;
+  display:flex;
+  flex-direction:row;
+  overflow:hidden;
+}
+
+.sidebar{
+  width:390px;
+  min-width:390px;
+  height:100vh;
+  overflow-y:auto;
+  background:var(--panel);
+  color:white;
+  padding:16px;
+  border-right:1px solid #000;
+  z-index:10;
+}
+
+.header h1{
+  margin:0 0 5px 0;
+  font-size:22px;
+}
+.header p{
+  margin:0;
+  color:#d1d5db;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.section{
+  margin-top:16px;
+  padding-top:12px;
+  border-top:1px solid #374151;
+}
+.section h2{
+  font-size:16px;
+  margin:0 0 8px 0;
+}
+
+.btn{
+  width:100%;
+  border:0;
+  border-radius:10px;
+  padding:10px 12px;
+  margin:4px 0;
+  font-weight:700;
+  cursor:pointer;
+  color:white;
+  background:var(--blue);
+  text-align:left;
+}
+.btn:hover{background:var(--blue-dark)}
+.btn.global{background:var(--green);text-align:center}
+.btn.global:hover{background:#15803d}
+.btn.clear{background:var(--red);text-align:center}
+.btn.clear:hover{background:#b91c1c}
+.btn.poi{background:#374151;text-align:center;font-size:13px}
+.btn.poi:hover{background:#4b5563}
+
+.poi-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+.search-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px;
+  margin-top:8px;
+}
+input{
+  width:100%;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+  padding:9px;
+  font-size:14px;
+}
+.small-note{
+  color:#d1d5db;
+  font-size:12px;
+  line-height:1.35;
+  margin-top:8px;
+}
+
+.main{
+  flex:1 1 auto;
+  min-width:0;
+  height:100vh;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.map-area{
+  position:relative;
+  flex:1 1 auto;
+  min-height:0;
+  width:100%;
+  background:#dbeafe;
+}
+
+#map{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  background:#dbeafe;
+  z-index:1;
+}
+
+.status{
+  position:absolute;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:1000;
+  background:#fff7ed;
+  color:#7c2d12;
+  border:1px solid #fdba74;
+  border-radius:12px;
+  padding:9px 12px;
+  font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+  display:none;
+  max-width:90%;
+}
+
+.info-panel{
+  position:absolute;
+  left:16px;
+  right:16px;
+  bottom:16px;
+  max-height:38vh;
+  overflow:auto;
+  background:rgba(255,255,255,0.97);
+  border-radius:16px;
+  box-shadow:0 12px 35px rgba(0,0,0,.22);
+  padding:14px;
+  z-index:500;
+}
+
+.info-panel h2{
+  margin:0 0 4px 0;
+  font-size:18px;
+}
+.info-panel p{
+  margin:4px 0;
+  color:#374151;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.activity-list{
+  display:grid;
+  gap:6px;
+  margin:10px 0;
+}
+.activity{
+  background:#eef2ff;
+  border-left:4px solid var(--blue);
+  padding:7px 8px;
+  border-radius:8px;
+  font-size:13px;
+}
+
+.table-wrap{
+  overflow:auto;
+  margin-top:10px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12.5px;
+}
+th,td{
+  border:1px solid #d1d5db;
+  padding:6px;
+  vertical-align:top;
+}
+th{
+  background:#111827;
+  color:white;
+}
+
+.poi-results{
+  margin-top:8px;
+  max-height:220px;
+  overflow:auto;
+  background:#0b1220;
+  border-radius:10px;
+  padding:6px;
+  display:none;
+}
+.poi-item{
+  padding:7px;
+  margin:4px 0;
+  border-radius:8px;
+  background:#1f2937;
+  color:white;
+  cursor:pointer;
+  font-size:12.5px;
+  line-height:1.25;
+}
+.poi-item:hover{background:#374151}
+.badge{
+  display:inline-block;
+  border-radius:999px;
+  padding:2px 8px;
+  font-size:11px;
+  font-weight:bold;
+  color:white;
+  background:var(--blue);
+  margin-right:4px;
+}
+
+.leaflet-container{
+  width:100% !important;
+  height:100% !important;
+}
+
+@media(max-width:900px){
+  html,body{
+    overflow:hidden;
+  }
+  .app{
+    flex-direction:column;
+  }
+  .sidebar{
+    width:100%;
+    min-width:0;
+    height:44vh;
+    min-height:280px;
+    border-right:0;
+    border-bottom:1px solid #000;
+  }
+  .main{
+    width:100%;
+    height:56vh;
+    min-height:360px;
+  }
+  .map-area{
+    height:100%;
+  }
+  .info-panel{
+    left:8px;
+    right:8px;
+    bottom:8px;
+    max-height:28vh;
+    padding:10px;
+  }
+}
+
+@media(max-width:520px){
+  .sidebar{
+    height:46vh;
+    min-height:300px;
+    padding:12px;
+  }
+  .main{
+    height:54vh;
+    min-height:330px;
+  }
+  .header h1{font-size:19px}
+  .poi-grid{grid-template-columns:1fr}
+  .search-row{grid-template-columns:1fr}
+  .info-panel{
+    max-height:24vh;
+  }
+}
+</style>
 </head>
+
 <body>
-<header>
-  <h1>Texas On The Road – Mappa fedele al programma</h1>
-  <p>Andrea Busollo & Marika Biondaro · 30 maggio – 10 giugno 2026 · Tappe fisse, distanze, aree di servizio e ricerca POI temporanea</p>
-</header>
-<div class="layout">
-  <aside>
-    <section class="card controls">
-      <h2>Controlli mappa</h2>
-      <button class="btn" onclick="fitRoute()">Mostra itinerario completo</button>
-      <button class="btn secondary" onclick="toggleLayer('fixed')">Tappe fisse</button>
-      <button class="btn secondary" onclick="toggleLayer('hotels')">Hotel</button>
-      <button class="btn secondary" onclick="toggleLayer('restaurants')">Ristoranti</button>
-      <button class="btn secondary" onclick="toggleLayer('parking')">Parcheggi</button>
-      <button class="btn green" onclick="toggleServiceAreas()" id="serviceBtn">Mostra aree di servizio</button>
-      <button class="btn gold" onclick="clearSearchResults()">Pulisci risultati POI</button>
-      <p class="small">Le tappe fisse sono programmate e rimangono la base del viaggio. Le ricerche POI sono temporanee e non vengono salvate.</p>
-      <div class="legend-row"><span class="dot fixed"></span> Tappe e attrazioni principali</div>
-      <div class="legend-row"><span class="dot hotel"></span> Hotel / pernottamenti</div>
-      <div class="legend-row"><span class="dot food"></span> Ristoranti programmati</div>
-      <div class="legend-row"><span class="dot parking"></span> Parcheggi consigliati</div>
-      <div class="legend-row"><span class="dot service"></span> Aree di servizio</div>
-      <div class="legend-row"><span class="dot search"></span> Risultati ricerca POI</div>
-    </section>
+<div class="app">
+  <aside class="sidebar">
+    <div class="header">
+      <h1>Texas On The Road 2026</h1>
+      <p>Mappa interattiva giorno per giorno con tappe fisse, attività, distanze, POI, distributori e ATM.</p>
+    </div>
 
-    <section class="card poiSearch">
-      <h2>Ricerca POI</h2>
-      <label>Categoria</label>
-      <select id="poiCategory">
-        <option value="restaurant">Ristoranti</option>
-        <option value="attraction">Attrazioni</option>
-        <option value="parking">Parcheggi</option>
-        <option value="museum">Musei</option>
-        <option value="park">Parchi</option>
-        <option value="fuel">Distributori / aree servizio</option>
-      </select>
-      <label>Zona di ricerca</label>
-      <select id="searchBase" onchange="handleBaseChange()">
-        <option value="gps">Posizione GPS attuale</option>
-        <option value="manual">Inserisci località manualmente</option>
-      </select>
-      <div id="manualBox" style="display:none">
-        <label>Località o coordinate GPS</label>
-        <input id="manualLocation" placeholder="Esempio: San Antonio Riverwalk oppure 29.4252,-98.4946" />
+    <button class="btn global" onclick="showAll()">🌎 Globale - Tutto il viaggio</button>
+
+    <div class="section">
+      <h2>Filtro giorni</h2>
+      <div id="dayButtons"></div>
+    </div>
+
+    <div class="section">
+      <h2>Ricerca POI temporanea</h2>
+      <div class="poi-grid">
+        <button class="btn poi" onclick="quickSearch('restaurant')">🍽️ Ristoranti</button>
+        <button class="btn poi" onclick="quickSearch('parking')">🅿️ Parcheggi</button>
+        <button class="btn poi" onclick="quickSearch('tourism')">📍 Attrazioni</button>
+        <button class="btn poi" onclick="quickSearch('park')">🌳 Parchi</button>
+        <button class="btn poi" onclick="quickSearch('fuel')">⛽ Distributori</button>
+        <button class="btn poi" onclick="quickSearch('atm')">🏧 ATM</button>
       </div>
-      <label>Raggio ricerca</label>
-      <select id="radius">
-        <option value="5000">5 km</option><option value="10000">10 km</option><option value="15000">15 km</option><option value="20000">20 km</option><option value="30000" selected>30 km</option>
-      </select>
-      <button class="btn" onclick="searchPOI()">Cerca</button>
-      <button class="btn red" onclick="clearSearchResults()">Cancella ricerca</button>
-      <div id="poiStatus" class="status">Seleziona una zona e avvia la ricerca.</div>
-    </section>
 
-    <section class="card">
-      <h2>Distanze tra le tappe programmate</h2>
-      <table id="distanceTable"></table>
-      <p class="small">Distanze indicative calcolate sul percorso stradale principale. I tempi possono aumentare per traffico, soste e accessi ai parchi.</p>
-    </section>
+      <div class="search-row">
+        <input id="customPoiInput" placeholder="Cerca altro vicino alla mappa..." onkeydown="if(event.key==='Enter'){customSearch();}">
+        <button class="btn poi" onclick="customSearch()">Cerca</button>
+      </div>
 
-    <section class="card">
-      <h2>Programma giorno per giorno</h2>
-      <div id="itinerary"></div>
-    </section>
+      <button class="btn clear" onclick="clearPOI()">Cancella richiesta / POI</button>
 
-    <section class="card">
-      <h2>Da prenotare prima della partenza</h2>
-      <span class="pill">Sixth Floor Museum ore 10:00</span>
-      <span class="pill">Big Texan Steak Ranch 19:15/19:30</span>
-      <span class="pill">Boudro’s tavolo esterno</span>
-      <span class="pill">ESTA 3–4 settimane prima</span>
-      <span class="pill">Parcheggio aeroporto Verona</span>
-      <span class="pill">Wine tasting Fredericksburg</span>
-    </section>
+      <div class="small-note">
+        La ricerca usa OpenStreetMap/Nominatim. Sposta o zooma la mappa nella zona desiderata prima di cercare distributori o ATM.
+      </div>
+
+      <div id="poiResults" class="poi-results"></div>
+    </div>
   </aside>
-  <main class="mapWrap"><div id="map"></div></main>
+
+  <main class="main">
+    <div class="map-area">
+      <div id="mapStatus" class="status"></div>
+      <div id="map"></div>
+
+      <section class="info-panel">
+        <h2 id="panelTitle">Texas On The Road</h2>
+        <p id="panelSubtitle">Seleziona un giorno oppure la vista globale.</p>
+
+        <div id="activities" class="activity-list"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Da</th>
+                <th>A</th>
+                <th>Distanza stimata</th>
+              </tr>
+            </thead>
+            <tbody id="distanceBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
 </div>
 
 <script>
-const routeStops = [
-  {name:'Dallas DFW Airport', lat:32.8998, lon:-97.0403},
-  {name:'Magnolia Hotel Dallas Downtown', lat:32.7794, lon:-96.7992},
-  {name:'Deep Ellum', lat:32.7840, lon:-96.7815},
-  {name:'Pioneer Plaza', lat:32.7767, lon:-96.8011},
-  {name:'Dealey Plaza / Sixth Floor Museum', lat:32.7798, lon:-96.8084},
-  {name:'Fort Worth Stockyards', lat:32.7895, lon:-97.3470},
-  {name:'Amarillo', lat:35.2219, lon:-101.8313},
-  {name:'Cadillac Ranch', lat:35.1872, lon:-101.9871},
-  {name:'Palo Duro Canyon State Park', lat:34.9847, lon:-101.7019},
-  {name:'Lubbock / Buddy Holly District', lat:33.5784, lon:-101.8452},
-  {name:'Luckenbach', lat:30.1799, lon:-98.7564},
-  {name:'Fredericksburg', lat:30.2752, lon:-98.8719},
-  {name:'Dixie Dude Ranch / Bandera', lat:29.7007, lon:-99.0526},
-  {name:'San Antonio Riverwalk / Alamo', lat:29.4259, lon:-98.4861},
-  {name:'Houston', lat:29.7604, lon:-95.3698},
-  {name:'NASA Space Center Houston', lat:29.5518, lon:-95.0982},
-  {name:'George Bush Intercontinental Airport', lat:29.9902, lon:-95.3368}
-];
-
-const fixedPoints = [
-  {cat:'fixed', day:'Giorno 1', name:'DFW Airport', lat:32.8998, lon:-97.0403, desc:'30 maggio · arrivo a Dallas/Fort Worth International Airport e ritiro SUV Hertz.'},
-  {cat:'fixed', day:'Giorno 1', name:'Deep Ellum', lat:32.7840, lon:-96.7815, desc:'30 maggio · 18:00 passeggiata nel quartiere Deep Ellum.'},
-  {cat:'fixed', day:'Giorno 2', name:'Pioneer Plaza', lat:32.7767, lon:-96.8011, desc:'31 maggio · 08:30 visita alle sculture dei longhorn.'},
-  {cat:'fixed', day:'Giorno 2', name:'Dealey Plaza', lat:32.7789, lon:-96.8083, desc:'31 maggio · passeggiata verso Dealey Plaza.'},
-  {cat:'fixed', day:'Giorno 2', name:'The Sixth Floor Museum', lat:32.7798, lon:-96.8084, desc:'31 maggio · 10:00–11:45 museo JFK.'},
-  {cat:'fixed', day:'Giorno 2', name:'Fort Worth Stockyards', lat:32.7895, lon:-97.3470, desc:'31 maggio · 15:30–18:30 area cowboy, saloon e longhorn.'},
-  {cat:'fixed', day:'Giorno 3', name:'Downtown Amarillo / Polk Street', lat:35.2120, lon:-101.8361, desc:'1 giugno · 16:15 passeggiata Downtown Amarillo e Polk Street.'},
-  {cat:'fixed', day:'Giorno 3', name:'Cadillac Ranch', lat:35.1872, lon:-101.9871, desc:'1 giugno · 17:15 visita all’installazione Route 66.'},
-  {cat:'fixed', day:'Giorno 4', name:'Palo Duro Canyon Scenic Drive', lat:34.9847, lon:-101.7019, desc:'2 giugno · 09:00 Scenic Drive nel canyon.'},
-  {cat:'fixed', day:'Giorno 4', name:'Buddy Holly District', lat:33.5784, lon:-101.8452, desc:'2 giugno · 16:30 passeggiata nel distretto di Buddy Holly.'},
-  {cat:'fixed', day:'Giorno 5', name:'Luckenbach', lat:30.1799, lon:-98.7564, desc:'3 giugno · 13:30 sosta nel paese simbolo della musica country.'},
-  {cat:'fixed', day:'Giorno 5', name:'Fredericksburg Main Street', lat:30.2752, lon:-98.8719, desc:'3 giugno · 15:15 passeggiata, wine tasting e cena romantica.'},
-  {cat:'fixed', day:'Giorno 6', name:'Dixie Dude Ranch', lat:29.7007, lon:-99.0526, desc:'4 giugno · 12:30 arrivo al ranch, esperienza ranch e cena.'},
-  {cat:'fixed', day:'Giorno 7', name:'Downtown Bandera / Main Street', lat:29.7266, lon:-99.0736, desc:'5 giugno · 09:30 passeggiata downtown Bandera.'},
-  {cat:'fixed', day:'Giorno 8', name:'The Alamo', lat:29.4258, lon:-98.4861, desc:'6 giugno · 12:15 visita all’Alamo.'},
-  {cat:'fixed', day:'Giorno 8', name:'San Antonio Riverwalk', lat:29.4241, lon:-98.4888, desc:'6 giugno · pranzo, centro storico, cena e passeggiata serale.'},
-  {cat:'fixed', day:'Giorno 9', name:'Houston Museum District', lat:29.7220, lon:-95.3896, desc:'7 giugno · passeggiata/relax e riferimento parcheggi coperti.'},
-  {cat:'fixed', day:'Giorno 10', name:'NASA Space Center Houston', lat:29.5518, lon:-95.0982, desc:'8 giugno · 09:45 tour NASA Space Center.'},
-  {cat:'fixed', day:'Giorno 11', name:'George Bush Intercontinental Airport', lat:29.9902, lon:-95.3368, desc:'9 giugno · 14:00 rilascio auto, 16:40 partenza.'}
-];
-
-const hotels = [
-  {cat:'hotels', day:'Giorno 1–2', name:'Magnolia Hotel Dallas Downtown', lat:32.7794, lon:-96.7992, desc:'Pernottamento Dallas.'},
-  {cat:'hotels', day:'Giorno 3', name:'Big Texan Hotel / Big Texan Area', lat:35.1938, lon:-101.7478, desc:'Pernottamento Amarillo.'},
-  {cat:'hotels', day:'Giorno 4', name:'Residence Inn Lubbock', lat:33.5466, lon:-101.9226, desc:'Pernottamento Lubbock indicato nel programma generale.'},
-  {cat:'hotels', day:'Giorno 5', name:'Hampton Inn Fredericksburg', lat:30.2721, lon:-98.8618, desc:'Pernottamento Fredericksburg.'},
-  {cat:'hotels', day:'Giorno 6–7', name:'Dixie Dude Ranch', lat:29.7007, lon:-99.0526, desc:'Soggiorno ranch a Bandera.'},
-  {cat:'hotels', day:'Giorno 8', name:'Westin Riverwalk San Antonio', lat:29.4246, lon:-98.4915, desc:'Pernottamento San Antonio.'},
-  {cat:'hotels', day:'Giorno 9–10', name:'Hilton Houston NASA Clear Lake', lat:29.5490, lon:-95.0772, desc:'Pernottamento area NASA/Clear Lake.'}
-];
-
-const restaurants = [
-  {cat:'restaurants', day:'Giorno 1', name:'Pecan Lodge', lat:32.7836, lon:-96.7835, desc:'30 maggio · 20:00 cena.'},
-  {cat:'restaurants', day:'Giorno 2', name:'Cattlemen’s Steakhouse', lat:32.7891, lon:-97.3484, desc:'31 maggio · 19:00 cena.'},
-  {cat:'restaurants', day:'Giorno 3', name:'Big Texan Steak Ranch', lat:35.1938, lon:-101.7478, desc:'1 giugno · 19:30 cena; prenotazione consigliata 19:15/19:30.'},
-  {cat:'restaurants', day:'Giorno 4', name:'Trading Post Palo Duro Canyon', lat:34.9848, lon:-101.7027, desc:'2 giugno · 11:15 pranzo al Trading Post.'},
-  {cat:'restaurants', day:'Giorno 4', name:'Triple J Chophouse', lat:33.5825, lon:-101.8467, desc:'2 giugno · 19:30 cena a Lubbock.'},
-  {cat:'restaurants', day:'Giorno 8', name:'Boudro’s on the Riverwalk', lat:29.4247, lon:-98.4884, desc:'6 giugno · 19:30 cena romantica; tavolo esterno consigliato.'},
-  {cat:'restaurants', day:'Giorno 9', name:'Pappadeaux’s Houston Area', lat:29.7416, lon:-95.4617, desc:'7 giugno · 19:30 cena da Pappadeaux’s.'},
-  {cat:'restaurants', day:'Giorno 10', name:'Ninfa’s on Navigation', lat:29.7556, lon:-95.3420, desc:'8 giugno · 20:00 cena.'}
-];
-
-const parking = [
-  {cat:'parking', name:'Deep Ellum Parking Garage / Elm Street', lat:32.7842, lon:-96.7832, desc:'Parcheggio consigliato Giorno 1.'},
-  {cat:'parking', name:'Sixth Floor Museum Parking', lat:32.7799, lon:-96.8095, desc:'Parcheggio consigliato Giorno 2 Dallas.'},
-  {cat:'parking', name:'Stockyards Station Parking', lat:32.7883, lon:-97.3480, desc:'Parcheggio consigliato Fort Worth.'},
-  {cat:'parking', name:'Polk Street Parking Amarillo', lat:35.2126, lon:-101.8358, desc:'Parcheggi lungo Polk Street.'},
-  {cat:'parking', name:'Cadillac Ranch Roadside Parking', lat:35.1870, lon:-101.9877, desc:'Parcheggio gratuito lungo la strada.'},
-  {cat:'parking', name:'Palo Duro Scenic Overlooks Parking', lat:34.9842, lon:-101.7040, desc:'Parcheggi panoramici interni.'},
-  {cat:'parking', name:'Buddy Holly District Parking', lat:33.5780, lon:-101.8458, desc:'Parcheggi gratuiti nel distretto.'},
-  {cat:'parking', name:'Luckenbach Parking', lat:30.1795, lon:-98.7568, desc:'Parcheggio gratuito.'},
-  {cat:'parking', name:'Fredericksburg Main Street Parking', lat:30.2755, lon:-98.8725, desc:'Parcheggi lungo Main Street.'},
-  {cat:'parking', name:'Bandera Main Street Parking', lat:29.7268, lon:-99.0736, desc:'Parcheggi gratuiti lungo Main Street.'},
-  {cat:'parking', name:'Rivercenter Garage', lat:29.4246, lon:-98.4833, desc:'Parcheggio consigliato San Antonio.'},
-  {cat:'parking', name:'Museum District Garage / Houston', lat:29.7226, lon:-95.3897, desc:'Parcheggi coperti nel Museum District.'},
-  {cat:'parking', name:'NASA Space Center Parking', lat:29.5504, lon:-95.0974, desc:'Parcheggio ufficiale NASA Space Center.'},
-  {cat:'parking', name:'IAH Rental Car Center', lat:29.9844, lon:-95.3318, desc:'Rilascio auto presso George Bush Intercontinental Airport.'}
-];
-
-const serviceAreas = [
-  {name:'Buc-ee’s Fort Worth / area DFW', lat:32.9279, lon:-97.3185, desc:'Area utile in uscita dal Metroplex verso nord-ovest.'},
-  {name:'Love’s Travel Stop Wichita Falls', lat:33.9137, lon:-98.4934, desc:'Sosta carburante/servizi sulla tratta Dallas–Amarillo.'},
-  {name:'Travel Center Childress', lat:34.4265, lon:-100.2045, desc:'Sosta intermedia sulla US-287.'},
-  {name:'Love’s Travel Stop Amarillo', lat:35.1903, lon:-101.7490, desc:'Servizi in zona Amarillo.'},
-  {name:'Travel Stop Plainview', lat:34.1858, lon:-101.7051, desc:'Servizi tra Amarillo/Palo Duro e Lubbock.'},
-  {name:'Travel Stop Snyder', lat:32.7179, lon:-100.9173, desc:'Sosta utile sulla lunga tratta Lubbock–Hill Country.'},
-  {name:'Travel Stop Brady', lat:31.1351, lon:-99.3351, desc:'Sosta prima dell’arrivo in Hill Country.'},
-  {name:'Kerrville / Hill Country Services', lat:30.0474, lon:-99.1403, desc:'Servizi tra Fredericksburg/Bandera/San Antonio.'},
-  {name:'Buc-ee’s Luling', lat:29.6709, lon:-97.6474, desc:'Sosta molto comoda sulla tratta San Antonio–Houston.'},
-  {name:'Columbus Travel Center', lat:29.7062, lon:-96.5528, desc:'Servizi su I-10 verso Houston.'},
-  {name:'Clear Lake Fuel / NASA Area', lat:29.5525, lon:-95.0913, desc:'Servizi in area NASA/Clear Lake.'}
-];
-
-const distanceRows = [
-  ['DFW Airport','Magnolia Hotel Dallas Downtown','32 km','25–45 min','Arrivo e ritiro SUV'],
-  ['Dallas Downtown','Deep Ellum','3 km','10–15 min','Giorno 1 sera'],
-  ['Dallas','Fort Worth Stockyards','55 km','45–70 min','Giorno 2 pomeriggio'],
-  ['Dallas','Amarillo','585 km','5h45–6h30','Giorno 3 · tappa lunga Route 66'],
-  ['Amarillo','Cadillac Ranch','16 km','15–20 min','Giorno 3'],
-  ['Amarillo','Palo Duro Canyon','45 km','40–50 min','Giorno 4 mattina'],
-  ['Palo Duro Canyon','Lubbock','195 km','2h00–2h30','Giorno 4'],
-  ['Lubbock','Luckenbach','555 km','6h15–7h00','Giorno 5 · tappa più critica'],
-  ['Luckenbach','Fredericksburg','22 km','20–25 min','Giorno 5'],
-  ['Fredericksburg','Dixie Dude Ranch / Bandera','95 km','1h20–1h45','Giorno 6'],
-  ['Dixie Dude Ranch','Downtown Bandera','15 km','15–20 min','Giorno 7'],
-  ['Bandera','San Antonio Riverwalk','80 km','1h10–1h30','Giorno 8'],
-  ['San Antonio','Houston / Clear Lake','350 km','3h45–4h45','Giorno 9 · traffico variabile'],
-  ['Hotel Clear Lake','NASA Space Center','5–10 km','10–20 min','Giorno 10'],
-  ['NASA/Clear Lake','Houston Museum District','55 km','45–75 min','Giorno 10 pomeriggio'],
-  ['Clear Lake / Houston','IAH Airport','65–80 km','60–90 min','Giorno 11 rilascio auto']
-];
-
-const itineraryDays = [
-  ['Giorno 1 – 30 Maggio | Arrivo a Dallas', ['14:05 Arrivo a Dallas e formalità aeroportuali','16:00 Ritiro SUV e trasferimento verso Magnolia Hotel Downtown','18:00 Passeggiata Deep Ellum','20:00 Cena da Pecan Lodge'], 'Parcheggio: Deep Ellum Parking Garage o parcheggi coperti vicino a Elm Street.'],
-  ['Giorno 2 – 31 Maggio | Dallas e Fort Worth', ['08:30 Pioneer Plaza','09:15 Passeggiata verso Dealey Plaza','10:00–11:45 The Sixth Floor Museum','12:30 Pranzo Downtown Dallas','14:00 Trasferimento Fort Worth','15:30–18:30 Stockyards','19:00 Cena da Cattlemen’s Steakhouse'], 'Parcheggi: Sixth Floor Museum Parking; Stockyards Station Parking.'],
-  ['Giorno 3 – 1 Giugno | Amarillo', ['08:00 Partenza da Dallas','15:00 Arrivo e check-in Amarillo','16:15 Downtown Amarillo e Polk Street','17:15 Cadillac Ranch','19:30 Cena Big Texan Steak Ranch'], 'Parcheggi: Polk Street; Cadillac Ranch gratuito lungo strada.'],
-  ['Giorno 4 – 2 Giugno | Palo Duro Canyon e Lubbock', ['09:00 Scenic Drive Palo Duro Canyon','11:15 Pranzo al Trading Post','12:15 Trasferimento verso Lubbock','16:30 Buddy Holly District','19:30 Cena Triple J Chophouse'], 'Parcheggi: punti panoramici interni; Buddy Holly District.'],
-  ['Giorno 5 – 3 Giugno | Texas Hill Country', ['08:45 Partenza da Lubbock','13:30 Arrivo a Luckenbach','15:15 Passeggiata Fredericksburg','18:00 Aperitivo e wine tasting','19:30 Cena romantica'], 'Nota: tratta molto lunga; orari da monitorare. Parcheggi: Luckenbach gratuito; Main Street Fredericksburg.'],
-  ['Giorno 6 – 4 Giugno | Arrivo al Ranch', ['09:00 Partenza da Fredericksburg','12:30 Arrivo al Dixie Dude Ranch','14:00 Esperienza ranch','17:30 Tramonto texano','19:00 Cena ranch'], 'Parcheggio gratuito interno al ranch.'],
-  ['Giorno 7 – 5 Giugno | Bandera e vita cowboy', ['09:30 Downtown Bandera','12:00 Pranzo texano','13:30 Relax ranch e attività facoltative','19:00 Cena e musica country'], 'Parcheggi gratuiti lungo Main Street Bandera.'],
-  ['Giorno 8 – 6 Giugno | San Antonio', ['09:00 Trasferimento San Antonio','12:15 Visita all’Alamo','13:30 Passeggiata e pranzo Riverwalk','15:00 Riverwalk e centro storico','19:30 Cena romantica da Boudro’s','21:30 Passeggiata serale illuminata'], 'Parcheggio: Rivercenter Garage o valet Westin Riverwalk.'],
-  ['Giorno 9 – 7 Giugno | Houston', ['08:30 Ultime visite a San Antonio','11:00 Trasferimento a Houston','15:30 Passeggiata e relax','19:30 Cena da Pappadeaux’s'], 'Parcheggi coperti nel Museum District o valet hotel.'],
-  ['Giorno 10 – 8 Giugno | NASA', ['09:45 Tour NASA Space Center','15:30 Relax e Museum District','20:00 Cena da Ninfa’s on Navigation'], 'Parcheggio ufficiale NASA Space Center.'],
-  ['Giorno 11 – 9 Giugno | Partenza', ['Mattina libera','14:00 Rilascio auto','16:40 Partenza per l’Italia'], 'Rilascio auto presso George Bush Intercontinental Airport.']
-];
-
-const colors = {fixed:'#1f77b4',hotels:'#6f42c1',restaurants:'#d64545',parking:'#5b6770',service:'#0f8b4c',search:'#ff9800'};
-const map = L.map('map').setView([31.5, -98.5], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-
-function icon(color){ return L.divIcon({className:'', html:`<div style="background:${color};width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 1px 6px rgba(0,0,0,.4)"></div>`, iconSize:[18,18], iconAnchor:[9,9]}); }
-function popup(p){ const q=encodeURIComponent(p.name); return `<div class="popup-title">${p.name}</div><div class="popup-sub">${p.day||''}</div><div>${p.desc||''}</div><a class="popup-link" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}">Apri in Google Maps</a>`; }
-
-const layers = {fixed:L.layerGroup().addTo(map), hotels:L.layerGroup().addTo(map), restaurants:L.layerGroup().addTo(map), parking:L.layerGroup().addTo(map), service:L.layerGroup(), search:L.layerGroup().addTo(map)};
-const pointIndex = [];
-function addPointToLayer(p, layerKey, colorKey){
-  const marker = L.marker([p.lat,p.lon],{icon:icon(colors[colorKey])}).bindPopup(popup(p)).addTo(layers[layerKey]);
-  pointIndex.push({name:p.name, lat:p.lat, lon:p.lon, marker});
-}
-[...fixedPoints].forEach(p=>addPointToLayer(p,'fixed','fixed'));
-hotels.forEach(p=>addPointToLayer(p,'hotels','hotels'));
-restaurants.forEach(p=>addPointToLayer(p,'restaurants','restaurants'));
-parking.forEach(p=>addPointToLayer(p,'parking','parking'));
-serviceAreas.forEach(p=>addPointToLayer(p,'service','service'));
-function normalizeName(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
-function findPointByLabel(label){
-  const n=normalizeName(label);
-  const aliases={
-    'dfw airport':'DFW Airport','dallas dfw airport':'DFW Airport','dallas':'Magnolia Hotel Dallas Downtown','dallas downtown':'Magnolia Hotel Dallas Downtown','amarillo':'Downtown Amarillo / Polk Street','palo duro canyon':'Palo Duro Canyon Scenic Drive','lubbock':'Lubbock / Buddy Holly District','luckenbach':'Luckenbach','fredericksburg':'Fredericksburg','dixie dude ranch bandera':'Dixie Dude Ranch','dixie dude ranch':'Dixie Dude Ranch','downtown bandera':'Downtown Bandera','bandera':'Downtown Bandera','san antonio riverwalk':'San Antonio Riverwalk','san antonio':'San Antonio Riverwalk','houston clear lake':'Hilton Houston NASA Clear Lake','houston museum district':'Houston Museum District','houston':'Houston Museum District','nasa space center':'NASA Space Center Houston','hotel clear lake':'Hilton Houston NASA Clear Lake','clear lake houston':'Hilton Houston NASA Clear Lake','nasa clear lake':'NASA Space Center Houston','iah airport':'George Bush Intercontinental Airport','clear lake houston iah airport':'George Bush Intercontinental Airport'
-  };
-  const target=aliases[n]||label;
-  const nt=normalizeName(target);
-  return pointIndex.find(p=>normalizeName(p.name)===nt) || pointIndex.find(p=>normalizeName(p.name).includes(nt) || nt.includes(normalizeName(p.name)));
-}
-function focusPoint(label){
-  let p=findPointByLabel(label);
-  if(!p && typeof routeStops !== 'undefined'){
-    const n=normalizeName(label);
-    p = routeStops.find(x=>normalizeName(x.name)===n || normalizeName(x.name).includes(n) || n.includes(normalizeName(x.name)));
+const tripDays = [
+  {
+    day: "Giorno 1",
+    date: "30/05/2026",
+    title: "Arrivo a Dallas",
+    description: "Arrivo a Dallas, ritiro SUV e prima serata a Deep Ellum.",
+    baseCity: "Dallas, Texas",
+    points: [
+      { time:"14:05", name:"Dallas Fort Worth International Airport", lat:32.8998, lng:-97.0403, type:"aeroporto", info:"Arrivo a Dallas e formalità aeroportuali." },
+      { time:"16:00", name:"Hertz - Dallas Fort Worth Airport", lat:32.8998, lng:-97.0403, type:"noleggio", info:"Ritiro SUV compatto presso DFW Airport." },
+      { time:"17:15", name:"Magnolia Hotel Dallas Downtown", lat:32.7790, lng:-96.7988, type:"hotel", info:"Check-in hotel - 2 notti." },
+      { time:"18:00", name:"Deep Ellum", lat:32.7841, lng:-96.7844, type:"visita", info:"Passeggiata nel quartiere Deep Ellum." },
+      { time:"20:00", name:"Pecan Lodge", lat:32.7836, lng:-96.7836, type:"ristorante", info:"Cena BBQ consigliata." }
+    ],
+    activities: [
+      "14:05 Arrivo a Dallas e disbrigo formalità aeroportuali.",
+      "16:00 Ritiro SUV e trasferimento verso il Magnolia Hotel Downtown.",
+      "18:00 Passeggiata nel quartiere Deep Ellum.",
+      "20:00 Cena da Pecan Lodge.",
+      "Parcheggio consigliato: Deep Ellum Parking Garage oppure parcheggi coperti vicino a Elm Street."
+    ]
+  },
+  {
+    day: "Giorno 2",
+    date: "31/05/2026",
+    title: "Dallas e Fort Worth",
+    description: "Mattina storica a Dallas e pomeriggio cowboy a Fort Worth Stockyards.",
+    baseCity: "Dallas / Fort Worth, Texas",
+    points: [
+      { time:"08:30", name:"Pioneer Plaza", lat:32.7767, lng:-96.8005, type:"visita", info:"Longhorn in bronzo e atmosfera downtown." },
+      { time:"09:15", name:"Dealey Plaza", lat:32.7787, lng:-96.8084, type:"visita", info:"Luogo storico legato a JFK." },
+      { time:"10:00", name:"The Sixth Floor Museum at Dealey Plaza", lat:32.7790, lng:-96.8087, type:"prenotazione", info:"Ingresso ore 10:00 - 411 Elm St, Dallas, TX 75202, Stati Uniti." },
+      { time:"12:30", name:"Downtown Dallas", lat:32.7767, lng:-96.7970, type:"pranzo", info:"Pranzo in centro a Dallas." },
+      { time:"15:30", name:"Fort Worth Stockyards", lat:32.7881, lng:-97.3470, type:"visita", info:"Passeggiata western, saloon e longhorn." },
+      { time:"19:00", name:"Cattlemen's Steakhouse", lat:32.7891, lng:-97.3473, type:"ristorante", info:"Cena steakhouse a Fort Worth." }
+    ],
+    activities: [
+      "08:30 Pioneer Plaza.",
+      "09:15 Passeggiata verso Dealey Plaza.",
+      "10:00 Ingresso The Sixth Floor Museum at Dealey Plaza.",
+      "12:30 Pranzo Downtown Dallas.",
+      "14:00 Trasferimento verso Fort Worth.",
+      "15:30 – 18:30 Stockyards.",
+      "19:00 Cena da Cattlemen’s Steakhouse.",
+      "Parcheggio consigliato: Dallas Sixth Floor Museum Parking; Fort Worth Stockyards Station Parking."
+    ]
+  },
+  {
+    day: "Giorno 3",
+    date: "01/06/2026",
+    title: "Amarillo",
+    description: "Giornata Route 66: Dallas, Amarillo, Cadillac Ranch e Big Texan.",
+    baseCity: "Amarillo, Texas",
+    points: [
+      { time:"08:00", name:"Magnolia Hotel Dallas Downtown", lat:32.7790, lng:-96.7988, type:"partenza", info:"Partenza da Dallas." },
+      { time:"15:00", name:"Big Texan Hotel", lat:35.1930, lng:-101.7546, type:"hotel", info:"Check-in ad Amarillo - 1 notte." },
+      { time:"16:15", name:"Downtown Amarillo / Polk Street", lat:35.2219, lng:-101.8313, type:"visita", info:"Passeggiata downtown e Polk Street." },
+      { time:"17:15", name:"Cadillac Ranch", lat:35.1872, lng:-102.1010, type:"visita", info:"Installazione iconica lungo Route 66." },
+      { time:"19:30", name:"The Big Texan Steak Ranch", lat:35.1924, lng:-101.7556, type:"prenotazione", info:"Reservation ore 19:30 - 7701 E I 40 Amarillo, TX 79118-6915." }
+    ],
+    activities: [
+      "08:00 Partenza da Dallas.",
+      "15:00 Arrivo e check-in ad Amarillo.",
+      "16:15 Passeggiata Downtown Amarillo e Polk Street.",
+      "17:15 Cadillac Ranch.",
+      "19:30 Reservation at The Big Texan Steak Ranch.",
+      "Parcheggio consigliato: Downtown Amarillo lungo Polk Street; Cadillac Ranch parcheggio gratuito lungo la strada."
+    ]
+  },
+  {
+    day: "Giorno 4",
+    date: "02/06/2026",
+    title: "Palo Duro Canyon e Lubbock",
+    description: "Scenic Drive nel canyon e arrivo a Lubbock, città di Buddy Holly.",
+    baseCity: "Palo Duro Canyon / Lubbock, Texas",
+    points: [
+      { time:"09:00", name:"Palo Duro Canyon State Park", lat:34.9370, lng:-101.6489, type:"natura", info:"Scenic Drive nel canyon." },
+      { time:"11:15", name:"Palo Duro Trading Post", lat:34.9378, lng:-101.6530, type:"pranzo", info:"Pranzo al Trading Post." },
+      { time:"12:15", name:"Trasferimento verso Lubbock", lat:34.9370, lng:-101.6489, type:"partenza", info:"Partenza dal canyon verso Lubbock." },
+      { time:"16:00", name:"Residence Inn by Marriott Lubbock University Area", lat:33.5866, lng:-101.8740, type:"hotel", info:"Check-in hotel - colazione inclusa." },
+      { time:"16:30", name:"Buddy Holly Center / Buddy Holly District", lat:33.5774, lng:-101.8451, type:"visita", info:"Passeggiata nel Buddy Holly District." },
+      { time:"19:30", name:"Triple J Chophouse & Brew Co.", lat:33.5778, lng:-101.8443, type:"ristorante", info:"Cena a Lubbock." }
+    ],
+    activities: [
+      "09:00 Scenic Drive nel Palo Duro Canyon.",
+      "11:15 Pranzo al Trading Post.",
+      "12:15 Trasferimento verso Lubbock.",
+      "16:30 Passeggiata nel Buddy Holly District.",
+      "19:30 Cena da Triple J Chophouse.",
+      "Parcheggio consigliato: Palo Duro Canyon parcheggi panoramici interni; Lubbock parcheggi gratuiti nel Buddy Holly District."
+    ]
+  },
+  {
+    day: "Giorno 5",
+    date: "03/06/2026",
+    title: "Texas Hill Country",
+    description: "Dal West Texas alla Hill Country: Luckenbach e Fredericksburg.",
+    baseCity: "Fredericksburg, Texas",
+    points: [
+      { time:"08:45", name:"Residence Inn Lubbock University Area", lat:33.5866, lng:-101.8740, type:"partenza", info:"Partenza da Lubbock." },
+      { time:"13:30", name:"Luckenbach Texas", lat:30.1805, lng:-98.7567, type:"visita", info:"Musica country, birra fredda e atmosfera texana." },
+      { time:"15:15", name:"Hampton Inn & Suites Fredericksburg", lat:30.2694, lng:-98.8710, type:"hotel", info:"Check-in hotel - 1 notte." },
+      { time:"15:30", name:"Fredericksburg Main Street", lat:30.2752, lng:-98.8719, type:"visita", info:"Passeggiata tra boutique, atmosfera tedesca e wine rooms." },
+      { time:"18:00", name:"Fredericksburg Wine Tasting", lat:30.2747, lng:-98.8720, type:"esperienza", info:"Aperitivo e degustazione vini." },
+      { time:"19:30", name:"Fredericksburg Dinner Area", lat:30.2750, lng:-98.8721, type:"ristorante", info:"Cena romantica in zona Main Street." }
+    ],
+    activities: [
+      "08:45 Partenza da Lubbock.",
+      "13:30 Arrivo a Luckenbach.",
+      "15:15 Passeggiata a Fredericksburg.",
+      "18:00 Aperitivo e wine tasting.",
+      "19:30 Cena romantica.",
+      "Parcheggio consigliato: Luckenbach parcheggio gratuito; Fredericksburg parcheggi lungo Main Street."
+    ]
+  },
+  {
+    day: "Giorno 6",
+    date: "04/06/2026",
+    title: "Arrivo al Ranch",
+    description: "Bandera e Dixie Dude Ranch: il Texas cowboy autentico.",
+    baseCity: "Bandera, Texas",
+    points: [
+      { time:"09:00", name:"Hampton Inn & Suites Fredericksburg", lat:30.2694, lng:-98.8710, type:"partenza", info:"Partenza da Fredericksburg." },
+      { time:"12:30", name:"Dixie Dude Ranch", lat:29.7650, lng:-99.0730, type:"ranch", info:"Arrivo al ranch - 2 notti, full board." },
+      { time:"14:00", name:"Dixie Dude Ranch Activities", lat:29.7650, lng:-99.0730, type:"esperienza", info:"Esperienza ranch." },
+      { time:"17:30", name:"Dixie Dude Ranch Sunset Point", lat:29.7655, lng:-99.0735, type:"natura", info:"Tramonto texano." },
+      { time:"19:00", name:"Dixie Dude Ranch Dinner", lat:29.7650, lng:-99.0730, type:"ristorante", info:"Cena ranch." }
+    ],
+    activities: [
+      "09:00 Partenza da Fredericksburg.",
+      "12:30 Arrivo al Dixie Dude Ranch.",
+      "14:00 Esperienza ranch.",
+      "17:30 Tramonto texano.",
+      "19:00 Cena ranch.",
+      "Parcheggio consigliato: parcheggio gratuito interno al ranch."
+    ]
+  },
+  {
+    day: "Giorno 7",
+    date: "05/06/2026",
+    title: "Bandera e vita cowboy",
+    description: "Giornata lenta tra downtown Bandera, ranch e musica country.",
+    baseCity: "Bandera, Texas",
+    points: [
+      { time:"09:30", name:"Downtown Bandera / Main Street", lat:29.7266, lng:-99.0736, type:"visita", info:"Passeggiata nella Cowboy Capital of the World." },
+      { time:"12:00", name:"Bandera Lunch Area", lat:29.7266, lng:-99.0736, type:"pranzo", info:"Pranzo texano." },
+      { time:"13:30", name:"Dixie Dude Ranch", lat:29.7650, lng:-99.0730, type:"ranch", info:"Relax ranch e attività facoltative." },
+      { time:"19:00", name:"Bandera Country Music / Ranch Dinner", lat:29.7268, lng:-99.0737, type:"esperienza", info:"Cena e musica country." }
+    ],
+    activities: [
+      "09:30 Passeggiata Downtown Bandera.",
+      "12:00 Pranzo texano.",
+      "13:30 Relax ranch e attività facoltative.",
+      "19:00 Cena e musica country.",
+      "Parcheggio consigliato: parcheggi gratuiti lungo Main Street Bandera."
+    ]
+  },
+  {
+    day: "Giorno 8",
+    date: "06/06/2026",
+    title: "San Antonio",
+    description: "Alamo, Riverwalk e cena romantica da Boudro’s.",
+    baseCity: "San Antonio, Texas",
+    points: [
+      { time:"09:00", name:"Dixie Dude Ranch", lat:29.7650, lng:-99.0730, type:"partenza", info:"Trasferimento verso San Antonio." },
+      { time:"12:00", name:"The Westin Riverwalk San Antonio", lat:29.4229, lng:-98.4908, type:"hotel", info:"Hotel San Antonio - 1 notte." },
+      { time:"12:15", name:"The Alamo", lat:29.4259, lng:-98.4861, type:"visita", info:"Visita all'Alamo." },
+      { time:"13:30", name:"San Antonio Riverwalk", lat:29.4241, lng:-98.4887, type:"visita", info:"Passeggiata e pranzo sul Riverwalk." },
+      { time:"15:00", name:"San Antonio Historic Center", lat:29.4246, lng:-98.4936, type:"visita", info:"Riverwalk e centro storico." },
+      { time:"19:30", name:"Boudro's Texas Bistro", lat:29.4244, lng:-98.4885, type:"prenotazione", info:"Reservation ore 19:30 - 421 E Commerce St, San Antonio, TX 78205." },
+      { time:"21:30", name:"Riverwalk Evening Walk", lat:29.4241, lng:-98.4887, type:"visita", info:"Passeggiata serale illuminata." }
+    ],
+    activities: [
+      "09:00 Trasferimento verso San Antonio.",
+      "12:15 Visita all’Alamo.",
+      "13:30 Passeggiata e pranzo sul Riverwalk.",
+      "15:00 Riverwalk e centro storico.",
+      "19:30 Reservation at Boudro's Texas Bistro.",
+      "21:30 Passeggiata serale illuminata.",
+      "Parcheggio consigliato: Rivercenter Garage oppure valet del Westin Riverwalk."
+    ]
+  },
+  {
+    day: "Giorno 9",
+    date: "07/06/2026",
+    title: "Houston",
+    description: "Da San Antonio a Houston, volto moderno e multiculturale del Texas.",
+    baseCity: "Houston, Texas",
+    points: [
+      { time:"08:30", name:"San Antonio Riverwalk", lat:29.4241, lng:-98.4887, type:"visita", info:"Ultime visite a San Antonio." },
+      { time:"11:00", name:"Trasferimento San Antonio - Houston", lat:29.7604, lng:-95.3698, type:"trasferimento", info:"Trasferimento verso Houston." },
+      { time:"15:30", name:"Hilton Houston NASA Clear Lake", lat:29.5515, lng:-95.0915, type:"hotel", info:"Check-in hotel - 2 notti." },
+      { time:"16:30", name:"Houston Museum District", lat:29.7220, lng:-95.3896, type:"visita", info:"Passeggiata e relax." },
+      { time:"19:30", name:"Pappadeaux Seafood Kitchen", lat:29.7350, lng:-95.4640, type:"ristorante", info:"Cena da Pappadeaux’s." }
+    ],
+    activities: [
+      "08:30 Ultime visite a San Antonio.",
+      "11:00 Trasferimento a Houston.",
+      "15:30 Passeggiata e relax.",
+      "19:30 Cena da Pappadeaux’s.",
+      "Parcheggio consigliato: parcheggi coperti nel Museum District o valet hotel."
+    ]
+  },
+  {
+    day: "Giorno 10",
+    date: "08/06/2026",
+    title: "NASA",
+    description: "Space Center Houston e ultimi momenti a Houston.",
+    baseCity: "Houston / NASA Clear Lake, Texas",
+    points: [
+      { time:"09:45", name:"Space Center Houston - NASA", lat:29.5518, lng:-95.0981, type:"prenotazione", info:"Tour NASA Space Center - audio in lingua inglese, ore 09:45." },
+      { time:"15:30", name:"Houston Museum District", lat:29.7220, lng:-95.3896, type:"visita", info:"Relax e Museum District." },
+      { time:"20:00", name:"The Original Ninfa's on Navigation", lat:29.7565, lng:-95.3429, type:"ristorante", info:"Cena da Ninfa’s on Navigation." },
+      { time:"22:00", name:"Hilton Houston NASA Clear Lake", lat:29.5515, lng:-95.0915, type:"hotel", info:"Rientro in hotel." }
+    ],
+    activities: [
+      "09:45 Tour NASA Space Center.",
+      "15:30 Relax e Museum District.",
+      "20:00 Cena da Ninfa’s on Navigation.",
+      "Parcheggio consigliato: parcheggio ufficiale NASA Space Center."
+    ]
+  },
+  {
+    day: "Giorno 11",
+    date: "09/06/2026",
+    title: "Partenza",
+    description: "Mattina libera, rilascio auto e volo di rientro.",
+    baseCity: "Houston, Texas",
+    points: [
+      { time:"09:30", name:"Hilton Houston NASA Clear Lake", lat:29.5515, lng:-95.0915, type:"hotel", info:"Mattina libera." },
+      { time:"12:00", name:"Houston Lunch / Last Stop", lat:29.7604, lng:-95.3698, type:"pranzo", info:"Ultimo pranzo americano o passeggiata rilassata." },
+      { time:"14:00", name:"Hertz Return - George Bush Intercontinental Airport", lat:29.9844, lng:-95.3414, type:"noleggio", info:"Rilascio auto presso Houston George Bush Intercontinental Airport." },
+      { time:"16:40", name:"George Bush Intercontinental Airport", lat:29.9902, lng:-95.3368, type:"aeroporto", info:"Partenza per l’Italia." }
+    ],
+    activities: [
+      "Mattina libera.",
+      "14:00 Rilascio auto.",
+      "16:40 Partenza per l’Italia.",
+      "Parcheggio consigliato: rilascio auto presso George Bush Intercontinental Airport."
+    ]
   }
-  if(!p) return;
-  map.setView([p.lat,p.lon],13);
-  if(p.marker) p.marker.openPopup();
-}
-function linkedStop(label){
-  const safe=String(label).replace(/'/g,"&#39;");
-  return `<span class="route-link" onclick="focusPoint('${safe}')">${label}</span>`;
+];
+
+const icons = {
+  hotel:"🏨", aeroporto:"✈️", noleggio:"🚗", visita:"📍", ristorante:"🍽️", pranzo:"🍴",
+  natura:"🏜️", ranch:"🤠", esperienza:"⭐", prenotazione:"🎟️", partenza:"▶️", trasferimento:"🚙", poi:"➕"
+};
+
+let map = null;
+let tileLayer = null;
+let mapReady = false;
+let pendingInitialView = true;
+
+let activeMarkers = [];
+let activeLines = [];
+let poiMarkers = [];
+let currentDayIndex = null;
+let activePoints = [];
+
+function showStatus(msg){
+  const el = document.getElementById("mapStatus");
+  el.innerText = msg;
+  el.style.display = "block";
 }
 
-const routeLine = L.polyline(routeStops.map(p=>[p.lat,p.lon]), {color:'#c8912e', weight:4, opacity:.8, dashArray:'8,8'}).addTo(map);
-function fitRoute(){ map.fitBounds(routeLine.getBounds().pad(0.08)); }
-function toggleLayer(k){ if(map.hasLayer(layers[k])) map.removeLayer(layers[k]); else layers[k].addTo(map); }
-function toggleServiceAreas(){ toggleLayer('service'); const visible=map.hasLayer(layers.service); document.getElementById('serviceBtn').textContent=visible?'Nascondi aree di servizio':'Mostra aree di servizio'; }
-fitRoute();
+function hideStatus(){
+  document.getElementById("mapStatus").style.display = "none";
+}
 
-function buildDistanceTable(){
-  const t=document.getElementById('distanceTable');
-  t.innerHTML='<thead><tr><th>Da</th><th>A</th><th>Km</th><th>Tempo</th><th>Nota</th></tr></thead><tbody>'+distanceRows.map(r=>`<tr><td>${linkedStop(r[0])}</td><td>${linkedStop(r[1])}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join('')+'</tbody>';
+function loadScript(src){
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
-function buildItinerary(){
-  const c=document.getElementById('itinerary');
-  c.innerHTML=itineraryDays.map(d=>`<div class="day"><div class="day-title">${d[0]}</div><ul>${d[1].map(x=>`<li>${x}</li>`).join('')}</ul><p class="small"><b>${d[2]}</b></p></div>`).join('');
-}
-buildDistanceTable(); buildItinerary();
 
-function initSearchOptions(){
-  const sel=document.getElementById('searchBase');
-  [...fixedPoints, ...hotels, ...restaurants, ...parking].forEach((p,i)=>{ const opt=document.createElement('option'); opt.value='point:'+i; opt.textContent=p.name; opt.dataset.lat=p.lat; opt.dataset.lon=p.lon; sel.appendChild(opt); });
-}
-initSearchOptions();
-function handleBaseChange(){ document.getElementById('manualBox').style.display = document.getElementById('searchBase').value==='manual' ? 'block':'none'; }
+async function ensureLeaflet(){
+  if(window.L) return true;
 
-function setStatus(msg){ document.getElementById('poiStatus').textContent=msg; }
-function clearSearchResults(){ layers.search.clearLayers(); setStatus('Risultati POI cancellati. Nessun risultato salvato.'); }
-async function getBaseCoordinates(){
-  const sel=document.getElementById('searchBase'); const val=sel.value;
-  if(val==='gps'){
-    return await new Promise((res,rej)=>{ if(!navigator.geolocation) return rej(new Error('GPS non disponibile su questo dispositivo/browser.')); navigator.geolocation.getCurrentPosition(pos=>res({lat:pos.coords.latitude, lon:pos.coords.longitude, label:'posizione GPS'}), err=>rej(new Error('Impossibile ottenere la posizione GPS: '+err.message)), {enableHighAccuracy:true,timeout:10000}); });
-  }
-  if(val==='manual'){
-    const txt=document.getElementById('manualLocation').value.trim(); if(!txt) throw new Error('Inserisci una località o coordinate GPS.');
-    const m=txt.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/); if(m) return {lat:+m[1], lon:+m[2], label:txt};
-    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(txt);
-    const r=await fetch(url, {headers:{'Accept':'application/json'}}); if(!r.ok) throw new Error('Geocoding non riuscito.'); const js=await r.json(); if(!js.length) throw new Error('Località non trovata.'); return {lat:+js[0].lat, lon:+js[0].lon, label:txt};
-  }
-  const opt=sel.options[sel.selectedIndex]; return {lat:+opt.dataset.lat, lon:+opt.dataset.lon, label:opt.textContent};
-}
-function overpassQuery(cat, lat, lon, radius){
-  const q = {
-    restaurant:['node["amenity"="restaurant"]','node["amenity"="fast_food"]','node["amenity"="cafe"]'],
-    attraction:['node["tourism"="attraction"]','node["historic"]','node["tourism"="viewpoint"]'],
-    parking:['node["amenity"="parking"]','way["amenity"="parking"]'],
-    museum:['node["tourism"="museum"]','way["tourism"="museum"]'],
-    park:['node["leisure"="park"]','way["leisure"="park"]','node["boundary"="national_park"]'],
-    fuel:['node["amenity"="fuel"]','node["highway"="services"]','way["highway"="services"]']
-  }[cat] || ['node["tourism"="attraction"]'];
-  return `[out:json][timeout:25];(${q.map(x=>`${x}(around:${radius},${lat},${lon});`).join('')});out center 50;`;
-}
-async function fetchOverpass(query){
-  const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.ru/api/interpreter'];
-  let lastErr='';
-  for(const ep of endpoints){
-    try{ const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)}); if(!r.ok) throw new Error('HTTP '+r.status); return await r.json(); }
-    catch(e){ lastErr=e.message; }
-  }
-  throw new Error('Errore ricerca Overpass: '+lastErr);
-}
-async function searchPOI(){
   try{
-    layers.search.clearLayers();
-    const cat=document.getElementById('poiCategory').value; const radius=+document.getElementById('radius').value;
-    setStatus('Ricerca in corso...');
-    const base=await getBaseCoordinates();
-    const q=overpassQuery(cat, base.lat, base.lon, radius);
-    const js=await fetchOverpass(q);
-    const els=(js.elements||[]).slice(0,50);
-    if(!els.length){ setStatus('Nessun risultato trovato nel raggio selezionato.'); return; }
-    const bounds=[];
-    els.forEach(e=>{ const lat=e.lat||(e.center&&e.center.lat); const lon=e.lon||(e.center&&e.center.lon); if(lat==null||lon==null) return; const name=(e.tags&&e.tags.name)||'POI senza nome'; const type=(e.tags&& (e.tags.amenity||e.tags.tourism||e.tags.leisure||e.tags.historic||e.tags.highway)) || cat; const p={name, lat, lon, desc:`Risultato temporaneo · categoria: ${type}`}; L.marker([lat,lon],{icon:icon(colors.search)}).bindPopup(popup(p)).addTo(layers.search); bounds.push([lat,lon]); });
-    L.circle([base.lat, base.lon], {radius:radius, color:'#ff9800', fill:false, weight:1}).addTo(layers.search);
-    if(bounds.length) map.fitBounds(L.latLngBounds(bounds).pad(0.2));
-    setStatus(`Trovati ${bounds.length} risultati temporanei entro ${(radius/1000).toFixed(0)} km da ${base.label}.`);
-  }catch(err){ setStatus(err.message || 'Errore nella ricerca.'); }
+    await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
+  }catch(e){
+    try{
+      await loadScript("https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js");
+    }catch(e2){
+      return false;
+    }
+  }
+
+  return !!window.L;
 }
+
+async function initMap(){
+  showStatus("Caricamento mappa...");
+  const ok = await ensureLeaflet();
+
+  if(!ok){
+    showStatus("Leaflet non è stato caricato. Controlla la connessione Internet o eventuali blocchi del browser.");
+    return;
+  }
+
+  const mapDiv = document.getElementById("map");
+  if(!mapDiv || mapDiv.clientHeight < 100){
+    showStatus("Il contenitore mappa non ha altezza sufficiente. Ricarica la pagina o apri il file in una finestra più grande.");
+  }
+
+  map = L.map("map", {
+    zoomControl:true,
+    preferCanvas:true
+  }).setView([31.3, -99.1], 6);
+
+  tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom:19,
+    detectRetina:true,
+    attribution:"&copy; OpenStreetMap contributors"
+  });
+
+  tileLayer.on("tileerror", () => {
+    showStatus("Le tessere OpenStreetMap non si caricano. Verifica connessione, firewall aziendale o prova con Chrome/Edge aggiornato.");
+  });
+
+  tileLayer.on("load", () => {
+    hideStatus();
+  });
+
+  tileLayer.addTo(map);
+
+  mapReady = true;
+
+  // Fix aggressivo per local file, mobile, resize pannelli e caricamento lento.
+  for(const delay of [100, 300, 700, 1200, 2000]){
+    setTimeout(() => {
+      if(map) map.invalidateSize(true);
+      if(pendingInitialView && mapReady){
+        showAll();
+        pendingInitialView = false;
+      }
+    }, delay);
+  }
+}
+
+function pointLabel(p){
+  const emoji = icons[p.type] || "📍";
+  return `${emoji} ${p.time ? p.time + " - " : ""}${p.name}`;
+}
+
+function markerPopup(p){
+  return `
+    <div>
+      <b>${pointLabel(p)}</b><br>
+      <span>${p.info || ""}</span><br>
+      <small>Lat: ${Number(p.lat).toFixed(4)}, Lng: ${Number(p.lng).toFixed(4)}</small>
+    </div>
+  `;
+}
+
+function clearRoute(){
+  if(!mapReady) return;
+  activeMarkers.forEach(m => map.removeLayer(m));
+  activeLines.forEach(l => map.removeLayer(l));
+  activeMarkers = [];
+  activeLines = [];
+}
+
+function clearPOI(){
+  if(!mapReady) return;
+  poiMarkers.forEach(m => map.removeLayer(m));
+  poiMarkers = [];
+  const box = document.getElementById("poiResults");
+  box.style.display = "none";
+  box.innerHTML = "";
+  refreshTable();
+}
+
+function renderPoints(points, fit=true){
+  if(!mapReady) return;
+
+  clearRoute();
+  activePoints = [...points];
+
+  const latlngs = [];
+
+  points.forEach(p => {
+    const marker = L.marker([p.lat, p.lng]).addTo(map).bindPopup(markerPopup(p));
+    activeMarkers.push(marker);
+    latlngs.push([p.lat, p.lng]);
+  });
+
+  if(latlngs.length > 1){
+    const line = L.polyline(latlngs, { weight:4, opacity:0.75 }).addTo(map);
+    activeLines.push(line);
+  }
+
+  requestMapRefresh();
+
+  if(fit && latlngs.length){
+    setTimeout(() => {
+      map.fitBounds(latlngs, { padding:[55,55], maxZoom:13 });
+      requestMapRefresh();
+    }, 160);
+  }
+}
+
+function requestMapRefresh(){
+  if(!mapReady) return;
+  for(const delay of [0, 120, 350, 800]){
+    setTimeout(() => map.invalidateSize(true), delay);
+  }
+}
+
+function showDay(index){
+  if(!mapReady) return;
+  currentDayIndex = index;
+  clearPOI();
+
+  const day = tripDays[index];
+
+  document.getElementById("panelTitle").innerText = `${day.day} - ${day.date} | ${day.title}`;
+  document.getElementById("panelSubtitle").innerText = day.description;
+  document.getElementById("activities").innerHTML = day.activities.map(a => `<div class="activity">${a}</div>`).join("");
+
+  renderPoints(day.points);
+  refreshTable();
+}
+
+function showAll(){
+  if(!mapReady) return;
+  currentDayIndex = null;
+  clearPOI();
+
+  const allPoints = [];
+  tripDays.forEach(d => {
+    d.points.forEach(p => allPoints.push({...p, name:`${d.date} - ${p.name}`}));
+  });
+
+  document.getElementById("panelTitle").innerText = "Vista Globale - Texas On The Road 2026";
+  document.getElementById("panelSubtitle").innerText = "Tutti i punti fissi del viaggio, con tabella completa delle distanze stimate tra tappe successive.";
+  document.getElementById("activities").innerHTML = tripDays.map(d => `<div class="activity"><b>${d.day} - ${d.date}</b>: ${d.title}</div>`).join("");
+
+  renderPoints(allPoints);
+  refreshTable();
+}
+
+function refreshTable(){
+  const tbody = document.getElementById("distanceBody");
+  tbody.innerHTML = "";
+
+  const tablePoints = [...activePoints];
+
+  poiMarkers.forEach(pm => {
+    const ll = pm.getLatLng();
+    tablePoints.push({
+      name: pm.options.poiName || "POI temporaneo",
+      lat: ll.lat,
+      lng: ll.lng,
+      time: "",
+      type: "poi"
+    });
+  });
+
+  if(tablePoints.length < 2){
+    tbody.innerHTML = `<tr><td colspan="3">Seleziona almeno due punti per visualizzare le distanze.</td></tr>`;
+    return;
+  }
+
+  let total = 0;
+
+  for(let i=0; i<tablePoints.length-1; i++){
+    const a = tablePoints[i];
+    const b = tablePoints[i+1];
+    const km = calcDistance(a.lat, a.lng, b.lat, b.lng);
+    total += km;
+    tbody.innerHTML += `
+      <tr>
+        <td>${pointLabel(a)}</td>
+        <td>${pointLabel(b)}</td>
+        <td>${km.toFixed(1)} km</td>
+      </tr>
+    `;
+  }
+
+  tbody.innerHTML += `
+    <tr>
+      <td colspan="2"><b>Totale stimato</b></td>
+      <td><b>${total.toFixed(1)} km</b></td>
+    </tr>
+  `;
+}
+
+function calcDistance(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI / 180;
+  const dLon = (lon2-lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 1.18;
+}
+
+function getSearchCenter(){
+  if(!mapReady) return {lat:31.3, lng:-99.1};
+  return map.getCenter();
+}
+
+function quickSearch(type){
+  const labels = {
+    restaurant: "restaurant",
+    parking: "parking",
+    tourism: "tourist attraction",
+    park: "park",
+    fuel: "gas station",
+    atm: "ATM cash machine"
+  };
+  searchPOI(labels[type] || type, type);
+}
+
+function customSearch(){
+  const q = document.getElementById("customPoiInput").value.trim();
+  if(!q){
+    alert("Inserisci cosa vuoi cercare.");
+    return;
+  }
+  searchPOI(q, "custom");
+}
+
+async function searchPOI(query, type){
+  const center = getSearchCenter();
+  const delta = 0.45;
+
+  const variants = {
+    fuel: ["gas station", "fuel station", "petrol station"],
+    atm: ["ATM", "cash machine", "bank ATM", "automated teller machine"]
+  };
+
+  const queries = variants[type] || [query];
+  const results = [];
+  const seen = new Set();
+
+  const baseCity = currentDayIndex !== null ? tripDays[currentDayIndex].baseCity : "Texas";
+
+  for(const q of queries){
+    const url =
+      "https://nominatim.openstreetmap.org/search" +
+      "?format=jsonv2" +
+      "&limit=12" +
+      "&addressdetails=1" +
+      "&bounded=1" +
+      "&countrycodes=us" +
+      "&viewbox=" + encodeURIComponent(`${center.lng-delta},${center.lat+delta},${center.lng+delta},${center.lat-delta}`) +
+      "&q=" + encodeURIComponent(q + " near " + baseCity);
+
+    try{
+      const response = await fetch(url, { headers: { "Accept":"application/json" } });
+      const data = await response.json();
+
+      data.forEach(item => {
+        const key = `${item.lat},${item.lon}`;
+        if(!seen.has(key)){
+          seen.add(key);
+          results.push(item);
+        }
+      });
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  showPOIResults(results.slice(0,12));
+}
+
+function showPOIResults(results){
+  const box = document.getElementById("poiResults");
+  box.style.display = "block";
+
+  clearPOIPreviewOnly();
+
+  if(!results.length){
+    box.innerHTML = "<div class='poi-item'>Nessun risultato trovato. Sposta la mappa vicino alla zona desiderata o aumenta lo zoom sulla città.</div>";
+    return;
+  }
+
+  box.innerHTML = results.map((r, i) => {
+    const label = cleanDisplayName(r.display_name);
+    return `<div class="poi-item" onclick='addPOI(${Number(r.lat)}, ${Number(r.lon)}, ${JSON.stringify(label)})'>
+      <span class="badge">${i+1}</span>${label}
+    </div>`;
+  }).join("");
+
+  results.forEach((r, i) => {
+    const label = cleanDisplayName(r.display_name);
+    const marker = L.circleMarker([Number(r.lat), Number(r.lon)], {
+      radius:7,
+      weight:2,
+      fillOpacity:0.75
+    }).addTo(map);
+    marker.options.poiName = label;
+    marker.bindPopup(`<b>${label}</b><br><button onclick='addPOI(${Number(r.lat)}, ${Number(r.lon)}, ${JSON.stringify(label)})'>Aggiungi alla tabella</button>`);
+    poiMarkers.push(marker);
+  });
+
+  refreshTable();
+}
+
+function clearPOIPreviewOnly(){
+  if(!mapReady) return;
+  poiMarkers.forEach(m => map.removeLayer(m));
+  poiMarkers = [];
+}
+
+function addPOI(lat, lng, name){
+  if(!mapReady) return;
+  const marker = L.marker([lat, lng]).addTo(map);
+  marker.options.poiName = name;
+  marker.bindPopup(`<b>POI aggiunto</b><br>${name}`);
+  poiMarkers.push(marker);
+  marker.openPopup();
+  refreshTable();
+}
+
+function cleanDisplayName(name){
+  if(!name) return "POI";
+  return name.split(",").map(p => p.trim()).filter(Boolean).slice(0,5).join(", ");
+}
+
+function buildDayButtons(){
+  const container = document.getElementById("dayButtons");
+  container.innerHTML = "";
+  tripDays.forEach((d, i) => {
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.innerText = `${d.day} - ${d.date} | ${d.title}`;
+    btn.onclick = () => showDay(i);
+    container.appendChild(btn);
+  });
+}
+
+buildDayButtons();
+
+window.addEventListener("load", initMap);
+window.addEventListener("resize", requestMapRefresh);
+window.addEventListener("orientationchange", () => setTimeout(requestMapRefresh, 500));
+document.addEventListener("visibilitychange", () => {
+  if(!document.hidden) requestMapRefresh();
+});
 </script>
 </body>
 </html>
